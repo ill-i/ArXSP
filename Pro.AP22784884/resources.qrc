@@ -1,0 +1,18 @@
+<!DOCTYPE RCC><RCC version="1.0">
+	<qresource>
+		<file>resources/main_icon.png</file>
+		<file>resources/FIATb-GR-CROP.png</file>
+		<file>resources/FIATb-OR-CROP.png</file>
+		<file>resources/FIATb-GR-INFO.png</file>
+		<file>resources/FIATb-OR-INFO.png</file>
+		<file>resources/FIATb-GR-PLOT.png</file>
+		<file>resources/FIATb-OR-PLOT.png</file>
+		<file>resources/FIATb-GR-AGREE.png</file>
+		<file>resources/FIATb-OR-AGREE.png</file>
+		<file>resources/eye.png</file>
+		<file>resources/green-close.png</file>
+		<file>resources/orange-close.png</file>
+		<file>resources/GR-arrow.png</file>
+		<file>resources/OR-arrow.png</file>
+	</qresource>
+</RCC>

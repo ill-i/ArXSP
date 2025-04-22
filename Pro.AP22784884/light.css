@@ -1,0 +1,84 @@
+QMainWindow {
+    background-color: white;
+    border-color: white;
+}
+
+
+/*Стиль центрального групбокса - разделенного через сплиттер*/
+QGroupBox#The_center_widget {
+    border-style: outset;
+    border-width: 0px;
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+    /*Стиль шапки центрального групбокса*/
+    QGroupBox#The_center_widget::title {
+        background-color: transparent;
+        border-width: 0px;
+        border: none;
+        color: transparent; /*цвет надписи*/
+        padding: 0px;
+    }
+
+
+/*Стиль групбокса для left виджетов*/
+QGroupBox#MainWidget {
+    border-style: outset;
+    border-width: 0px;
+    margin: 1px;
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+    /*Стиль шапки центрального групбокса*/
+    QGroupBox#MainWidget::title {
+        background-color: transparent;
+        border-width: 0px;
+        padding: 0px;
+        border: none;
+        color: transparent; /*цвет надписи*/
+    }
+
+
+/*Стиль GUI терминала*/
+QWidget#Terminal {
+    border: none;
+    border-width: 0px;
+    padding: 0px;
+    margin: 0;
+}
+/*Стиль шапки GUI терминала*/
+QLabel#terminal_label {
+    color: cornflowerblue;
+    font-size: 24px;
+    font-weight: bold;
+}
+/*Стиль кнопки зыкрытия GUI терминала*/
+QPushButton#close_terminal_button {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+    /*Стиль кнопки зыкрытия GUI терминала при нажатие*/
+    QPushButton#close_terminal_button:hover {
+        background-color: rgba(255, 255, 255, 80);
+        padding: 0;
+        margin: 0;
+    }
+/*Стиль полотна терминала*/
+QTextEdit#terminal_text_editor {
+    color: black;
+    background-color: white;
+    font-family: Consolas, Courier, monospace;
+    font-size: 32px;
+    padding: 10px;
+}
+
+
+/*Стиль самой линии сплиттера*/
+QSplitter#mainhorsplitter::handle {
+    background-color: orange;
+}
+

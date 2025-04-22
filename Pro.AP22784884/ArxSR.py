@@ -1,0 +1,412 @@
+﻿import io
+import os
+from unittest import signals
+import cv2
+import numpy as np
+from PIL import Image
+from astropy.io import fits
+import matplotlib.pyplot as plt
+from abc import ABC, abstractmethod
+from scipy import signal ### v1.7.1
+from scipy.signal import find_peaks
+from typing import Literal
+
+
+class ArxData(object):
+    
+#Initialize:
+    def __init__(self, path=None, fname = None, data = None, header = None):
+
+    #Main data created by code:
+        if path is None:
+            self.__data = data
+            self.__header = header
+            self.__fname = fname
+            return
+
+    #Main data created by file:
+        self.__path = path
+        self.__data = None
+        self.__header = None
+        self.__fname = fname
+
+    #Read main data:
+        try:
+            fitsfile = fits.open(path)
+            self.__data = fitsfile[0].data
+            self.__header = fitsfile[0].header
+            self.__fname = os.path.basename(path).replace(".fit","").replace(".fits","")
+            print(self.__fname)
+
+        except Exception as err:
+            print(f"Unexpected {err=}, {type(err)=}")
+            return
+#End of init_________________________________________
+
+#Getters:
+    def get_header(self):
+        return self.__header
+
+    def set_header(self, header):
+        self.__header = header
+
+    def get_data(self):
+        return self.__data
+
+    def get_path(self):
+        return self.__path
+
+    def get_fname(self):
+        return self.__fname
+
+    def get_exptime(self):
+        try:
+            if 'EXPTIME' in self.__header:
+                return self.__header['EXPTIME']
+            else:
+                return None
+        except Exception as e:
+            return f'err: {e}'
+
+
+#End of getters_____________
+
+#Save as png in buffer:
+    def get_png_buff(self):
+
+        if self.__data is None:
+            print("err: No data for .png!")
+            return None
+        else:
+            buff = io.BytesIO() 
+            plt.imsave(buff, self.__data[::-1], format='png') 
+            # Перемещаем курсор в начало
+            buff.seek(0)  
+            return buff 
+#End of Save as png in buffer________________________________
+
+
+#Get image as cv2-normalized:
+    def get_image(self):
+        if self.__data is None:
+            print("err: No data for image!")
+            return None
+        else:
+            norm_image = cv2.normalize(self.__data[::-1], None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            return cv2.applyColorMap(norm_image, cv2.COLORMAP_VIRIDIS)
+#End of Get image as cv2-normalized______________________________________________________________________
+
+
+#Save as png in path:
+    def save_as_png(self, path = None):
+        if self.__data is None:
+            print("err: No data for .png!")
+            return
+        
+        fname = f"{self.__fname}.png"
+        
+        if path is None:
+            plt.imsave(fname, self.__data[::-1], format='png')  
+        else:
+            full_path = os.path.join(path, fname)
+            plt.imsave(full_path, self.__data[::-1], format='png')
+#End of save_as_png_______________________________________________
+
+#Save as fits:
+    def save_as_fits(self, path=None):
+
+        if self.__data is None or self.__header is None:
+            print("err: No data or header for .fits!")
+            return
+        fits_file = fits.PrimaryHDU(data=self.__data, header=self.__header)
+        fits_list = fits.HDUList([fits_file])
+        if path is None:
+            fits_list.writeto(self.__fname+'.fits',overwrite=True) 
+        else:
+            full_path = os.path.join(path, self.__fname)
+            fits_list.writeto(full_path+'.fits',overwrite=True) 
+#End of Save as png in path_______________________________________
+#End of class ArxData_____________________________________________
+
+
+from datetime import datetime
+#class ArxDataEditor(ABC):
+class ArxDataEditor(object):
+
+#initialize:
+    def __init__(self, arxData):
+
+        if arxData is None:
+            print("argument err. arxData is None")
+            return
+
+        if not isinstance(arxData, ArxData):
+            print("arxData type error")
+            return
+
+        self._arxData = arxData
+#End of initializer...............................
+
+
+#Rotation by angle:
+    def rotate(self,angle=0): 
+        try: 
+            temp_data = self._arxData.get_data()
+            temp_header =self._arxData.get_header()
+
+            shape = (temp_data.shape[1],temp_data .shape[0])
+            center = (int(shape[0]/2),int(shape[1]/2))
+            matrix = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1 ) 	
+        
+            data_rotated = cv2.warpAffine(src=temp_data, M=matrix, dsize=shape) 
+        
+            temp_header.add_history(f"Image was rotated on {angle:.1f} deg")
+            temp_header['DATE'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+
+            return ArxData(None,None,data_rotated,temp_header)
+        except Exception as e:
+            print(f"[rotate] Error occurred: {e}")
+            return None
+
+        
+#End of Rotation.............
+
+#Cropping:
+    def crop(self, right, left, top, down):
+        try: 
+            temp_data = self._arxData.get_data()
+            temp_header = self._arxData.get_header()
+            
+            if temp_data is None or not isinstance(temp_data, np.ndarray):
+                raise TypeError("Input data must be a valid 2D NumPy array.")
+            if temp_data.ndim != 2:
+                raise ValueError("Only 2D arrays are supported for cropping.")
+            
+            w = temp_data.shape[1]
+            h = temp_data.shape[0]
+
+            Left = int(left * w / 100)
+            Right = int(right * w / 100)
+            Top = int(top * h / 100)
+            Down = int(down * h / 100)
+
+            # Проверка на допустимость обрезки
+            if Left + Right >= w:
+                raise ValueError(f"Invalid crop: left + right ({Left + Right}px) >= image width ({w}px).")
+            if Top + Down >= h:
+                raise ValueError(f"Invalid crop: top + down ({Top + Down}px) >= image height ({h}px).")
+
+            data_croped = temp_data[Down:(h - Top), Left:(w - Right)]
+            
+            temp_header["NAXIS1"] = abs(Left - (w - Right))
+            temp_header["NAXIS2"] = abs(Down - (h - Top))
+            temp_header['DATE'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+            temp_header.add_history(f"Image was cropped: L={left}%, R={right}%, T={top}%, D={down}%")
+            
+            return ArxData(None, None, data_croped, temp_header)
+        except Exception as e:
+            print(f"[crop] Error occurred: {e}")
+            return None
+
+#End of Cropping.......................................................................................
+
+
+#Obtain Optical Density data:
+    def get_OpticalDens(self):
+        data = np.where((self._arxData.get_data()==0),1e-32,self._arxData.get_data())
+        return np.log10(65535/data)*1000
+#End of Optical data.......................................
+
+
+#Get Arx_Data.data as array:
+    def get_ArxData_xy(self):
+        optic_data = self.get_OpticalDens()
+
+        array_y = np.mean(optic_data, axis=0)  
+        return np.column_stack((np.arange(array_y.shape[0]), array_y))
+
+#End of get_ArxData_xy________________________
+
+    #def get_max_exposition(self, )
+
+#End of ArxDataEditor
+
+
+
+class ArxSpectEditor(ArxDataEditor):
+    pass
+#End of ArxSpectEditor
+
+
+
+class ArxCollibEditor(ArxDataEditor):
+
+#initialize:
+    def __init__(self, arxData):
+    # parent
+        super().__init__(arxData)
+#End of initializer...............................
+
+
+
+#Find peaks:
+    def get_peaks(self, order = None):
+    #order mode:
+        if order is None:
+            return self.get_peaks_auto()
+        else: 
+            if order > 21: order = 21
+            #get mean data of optical dens:
+            data = self.get_ArxData_xy()
+            #peak indexes
+            peak_x = signal.argrelextrema(data, np.greater, order=order)[0] 
+            peak_y =[] 
+            for i in range(0,len(data)):
+                if i in peak_x:
+                    # search mean by 5 values: 
+                    peak_y.append((data[i-2]+data[i-1]+data[i]+data[i+1]+data[i+2])/5) 
+
+            if len(peak_x) !=9 and len(peak_y)!=9:
+                print("Wrong data to find peaks")
+                return None
+
+            #x and y values of peaks: 
+            return peak_x, peak_y
+#End of Find peaks____________________________________________________________________
+
+    @staticmethod
+    def shift_peaks_magnitude(arg: Literal["before", "after"], shift_value, max_exposition):
+                # attenuators of magnitude:
+        attenuator = [0,0.61,1.1,1.47,1.84,2.25,2.66,3.04,0][:-1]
+
+        if arg == "before":
+            attenuator = [0,0.61,1.1,1.47,1.84,2.25,2.66,3.04,0][:-1]
+        else: 
+            #after:
+            attenuator = [0,0.5,0.97,1.44,1.93,2.43,2.69,3.04,0][:-1]
+
+        sign = 0
+
+        if shift_value < 0: 
+            sign = -1 
+        else:
+            sign = 1
+
+        if shift_value < -100 or shift_value > 100:
+            delta = 0
+        else: delta = 2.5 * np.log(max_exposition/((max_exposition*max(abs(shift_value), 1))/100)) 
+
+        return attenuator + delta*sign
+
+    
+
+
+
+
+
+
+
+
+
+#Find peaks automatically:
+    def get_peaks_auto(self):
+        
+        data = self.get_ArxData_xy()
+
+        data_smoothed, peak_x = self.__auto_calculate_peaks(data)
+        values = data_smoothed[peak_x][1:8]
+        changes = [y - x for x, y in zip(values, values[1:])]
+        increasing = sum(change > 0 for change in changes)
+        decreasing = sum(change < 0 for change in changes)
+    
+        if increasing > decreasing:
+            data_smoothed, peak_x = self.__auto_calculate_peaks(data[::-1])
+        elif decreasing > increasing:
+            pass
+        else:
+            print("err: Cannot understand calibration peaks values")
+
+        peak_y = data_smoothed[peak_x]
+        return peak_x, peak_y
+#End of Find peaks automatically_________________________________________
+
+
+
+#Private method to auto calculate peaks:
+    def __auto_calculate_peaks(self,data):
+        # Step 1: Define the window size for the moving average.
+        N_rm = 5  # Size of the moving average window
+    
+        # Step 2: Create a window for moving average and perform convolution in the frequency domain.
+        W = np.zeros_like(data); W[:N_rm] = 1  # Moving average window
+        FConv = np.fft.fft(data) * np.fft.fft(W)  # Convolution in frequency domain
+    
+        # Step 3: Convert back to time domain and normalize to obtain the smoothed data.
+        TConv = np.fft.ifft(FConv).real / N_rm  # Inverse FFT for smoothing
+        data_smoothed = np.pad(TConv[(N_rm-1)//2:], (0, (N_rm-1)//2), 'constant')  # Padding for consistency
+    
+        # Step 4: Detect peaks with a minimum distance constraint to avoid closely-spaced false positives.
+        all_peaks, _ = find_peaks(data_smoothed, distance=len(data_smoothed)/20)
+    
+        # Step 5: Ensure there are enough peaks to analyze.
+        if len(all_peaks) < 2:
+            return [], []  # Early exit if not enough peaks found
+    
+        # Step 6: Divide the data into two halves and find the highest peak in each half.
+        mid_point = len(data_smoothed) // 2
+        first_half_peaks = all_peaks[all_peaks < mid_point]
+        second_half_peaks = all_peaks[all_peaks >= mid_point]
+        if len(first_half_peaks) == 0 or len(second_half_peaks) == 0:
+            return [], []  # Early exit if one half lacks peaks
+
+        # Identifying the highest peaks in each half.
+        first_peak = first_half_peaks[np.argmax(data_smoothed[first_half_peaks])]
+        last_peak = second_half_peaks[np.argmax(data_smoothed[second_half_peaks])]
+
+        # Step 7: Select additional peaks between the highest peaks of each half, limited to the seven highest.
+        internal_peaks = all_peaks[(all_peaks > first_peak) & (all_peaks < last_peak)]
+        if len(internal_peaks) > 7:
+            internal_peaks = internal_peaks[np.argsort(data_smoothed[internal_peaks])[-7:]]  # Focus on significant features
+        elif len(internal_peaks) < 7:
+            data_smoothed = data
+            add_shift = 20 #чтобы не захватывал крайние пики, которые итак учтены
+            internal_peaks, _ = find_peaks(data_smoothed[first_peak+add_shift:last_peak-add_shift], distance=len(data_smoothed[first_peak:last_peak])/100)
+            internal_peaks = internal_peaks + first_peak+add_shift
+            if len(internal_peaks) > 7:
+                print("len(internal_peaks) > 7")
+                internal_peaks = internal_peaks[np.argsort(data_smoothed[internal_peaks])[-7:]]  # Focus on significant features
+       
+        # Combine, sort, and return the indices of selected peaks.
+        peak_indx = np.sort(np.concatenate(([first_peak], internal_peaks, [last_peak])))
+        if len(peak_indx)!=9:
+            return "Couldn't find all peaks. Please write an order and try again"
+        return data_smoothed, peak_indx
+#End of Privates________________________________________________________________________________________________________
+
+#End of ArxCollibEditor
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Add Later:
+####################################################################################################################
+#data = self.__arxData.get_data()
+
+#        shape = (data.shape[1],data.shape[0])
+#        #print(shape)
+#        center = (int(shape[0]/2),int(shape[1]/2))
+#        matrix = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1 )
+#        data_rotated = cv2.warpAffine(src=data, M=matrix, dsize=shape) 
+        
+#        return ArxData(None,f"rot_{angle}_{self.__arxData.get_fname()}", data_rotated, self.__arxData.get_header())
+####################################################################################################################

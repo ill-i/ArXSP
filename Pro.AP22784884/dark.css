@@ -1,0 +1,620 @@
+/*Стиль главного окна*/
+QMainWindow {
+    background-color: #2c2f33;
+    border-color: #2c2f33;
+}
+
+
+/*Стиль центрального групбокса - разделенного через сплиттер*/
+QGroupBox#The_center_widget {
+    border-style: outset;
+    border-width: 0px;
+    margin: 1px;
+    border: none;
+    margin: 0;
+    padding: 0;
+}   /*Стиль шапки центрального групбокса*/
+    QGroupBox#The_center_widget::title {
+        background-color: transparent;
+        border-width: 0px;
+        padding: 0px;
+        border: none;
+        /*цвет надписи*/
+        color: transparent;
+    }
+
+
+/*Стиль групбокса для left виджетов*/
+QGroupBox#MainWidget {
+    border-style: outset;
+    border-width: 0px;
+    margin: 1px;
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+    /*Стиль шапки центрального групбокса*/
+    QGroupBox#MainWidget::title {
+        background-color: transparent;
+        border-width: 0px;
+        padding: 0px;
+        border: none;
+        /*цвет надписи*/
+        color: transparent;
+    }
+
+
+/*Стиль Menu-бара*/
+QMenuBar {
+    /*Темно-серый фон меню*/
+    background-color: #212121;
+    /*Белый текст меню*/
+    color: #FFFFFF;
+    /*Границы меню*/
+    border: 1px solid #444444;
+    /*Расстояние между элементами*/
+    spacing: 10px;
+}
+    /*Стили элементов меню-бара*/
+    QMenuBar::item {
+        /*Прозрачный фон для элементов меню*/
+        background-color: transparent;
+        /*Белый текст элементов меню*/
+        color: #FFFFFF;
+        /*Добавляем отступы*/
+        padding: 0 15px;
+        /*Расстояние между пунктами*/
+        margin: 0 5px;
+    }
+        /*Стили элементов меню бара при наведении*/
+        QMenuBar::item:selected {
+            background-color: rgba(255,255,20,50); 
+        }
+
+/*Стиль Menu*/
+QMenu {
+    /*Темно-серый фон выпадающего меню*/
+    background-color: #333333;
+    /*Белый текст выпадающего меню*/
+    color: #FFFFFF;
+    /*Границы выпадающего меню*/
+    border: 1px solid #555555;
+}
+    /*Стиль элементов Menu при наведении*/
+    QMenu::item:selected {
+        /* Светло-серый фон при наведении */
+        background-color: rgba(255,255,20,50);
+        /* Белый текст при наведении */
+        color: #FFFFFF;
+    }
+
+
+/*Стиль menu line*/
+QFrame#menuline {
+    color: orange;
+    background-color: orange;
+    height: 4px;
+}
+
+
+/*Стиль самой линии сплиттера*/
+QSplitter#mainhorsplitter::handle {
+    background-color: orange; /*#212121; /*#283d3d; /*orange;*/
+}
+QSplitter#mainhorsplitter::handle:pressed {
+    background-color: orangered;
+}
+
+
+/*Стиль GUI терминала*/
+QWidget#GUITerminal {
+    border: none;
+    border-width: 0px;
+    padding: 0px;
+    margin: 0;
+}
+/*Стиль шапки GUI терминала*/
+QLabel#terminal_label {
+    color: forestgreen;/*#283d3d; /*white;*/
+    font-size: 32px;
+    font-weight: bold;
+    padding: 0px;
+    margin: 0;
+}
+/*Стиль кнопки зыкрытия GUI терминала*/
+QPushButton#close_terminal_button {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+    /*Стиль кнопки зыкрытия GUI терминала при нажатие*/
+    QPushButton#close_terminal_button:hover {
+        background-color: rgba(255, 255, 20, 50);
+        padding: 0;
+        margin: 0;
+    }
+/*Стиль полотна терминала*/
+QTextEdit#terminal_text_editor {
+    color: /*forestgreen*/ white;
+    background-color: #212121;
+    border: none;
+    font-family: Consolas, Courier, monospace;
+    font-size: 32px;
+    padding: 10px;
+}
+
+
+/*Стиль ТУЛ-БАРА где стоят кнопки переключения между страницами*/
+    QToolBar {
+    background-color: #212121;
+    background-repeat: no-repeat;
+    background-position: center;
+    border-top: 2px solid;
+    border-top-color: orange;
+}
+/*Стиль КНОПОК ТУЛ-БАРА*/
+QToolButton {
+    border: 2px;
+    background-color: #212121;
+    border-radius: 16px;
+    margin: 10px;
+    color: #283d3d;
+    margin-top: 15px;
+}
+    /*Стиль КНОПОК ТУЛ-БАРА ПРИ НАВЕДЕНИИ*/
+    QToolButton:hover {
+        background-color: rgba(255,255,20,50);
+        color: darkorange;
+    }
+        /*Стиль ИКОНОК КНОПОК ТУЛ-БАРА ПРИ НАВЕДЕНИИ*/
+        QToolButton:hover QIcon {
+        }
+    /*Стиль КНОПОК ТУЛ-БАРА ПРИ НАЖАТИЕ*/
+    QToolButton:pressed {
+        padding: 4px;
+        color: green;
+    }
+
+
+/*Стиль ДОК ВИДЖЕТА который находиться с права*/
+QDockWidget{
+    /*font-family: "monospace";*/
+    font-family: Consolas;
+    font-size: 10pt;
+    color: #283d3d; 
+    border-width: 5px;
+    background-color: #212121;
+    border-color: #212121;
+    padding-left: 1px;
+    padding-top: 10px;
+    margin: 5px;
+}
+    /*Стиль ШАПКИ ДОК ВИДЖЕТА который находиться с права*/
+    QDockWidget:title {
+        background-color: #212121;
+        border-color: #212121;
+        border-radius: 1px;
+        margin-top: 8px;
+    }
+    /*Стиль КОНТЕЙНЕРА(установлен QGroupBox) а этом ДОК-ВИДЖЕТЕ */
+    QGroupBox#dashborder {
+        border: 5px solid #212121; 
+        margin-top: 0px; 
+        margin-bottom: 0px;
+        margin-right: 0px;
+    }
+
+
+
+
+/* ----------MODELS STYLESHEETS---------------*/
+
+/*Usage models styles:*/
+
+/*Styles of Left of Usage models*/
+QGroupBox#gbox_usage_left {
+    background-image: url('AFI.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    border: none;
+    border-radius: 0px;
+    margin-top: 20px;
+}
+    QGroupBox#gbox_usage_left:title {
+        subcontrol-origin: margin;
+        subcontrol-position: top center;
+        padding: 0 10px;
+        background-color: rgba(255, 255, 255, 0.7);
+        border-radius: 0px;
+        border: none;
+    }
+
+/*Styles of right of Usage models*/
+QLabel#usage_right_label {
+    /*  #283d3d Зеленый фон */
+    background-color: #212121;
+    /* Белый текст */
+    color: white;
+    /* Закругленные углы */
+    border-radius: 50px;
+    /* Внутренние отступы */
+    padding: 15px;
+    /* Размер шрифта */
+    font-size: auto;
+}
+
+QCheckBox#usage_right_checkbox {
+    /* Размер шрифта */
+    font-size: auto;
+    color: white;
+}
+
+/*Кастамная кнопка*/
+QPushButton#right_btn_accept {
+    /* Исходное состояние кнопки */
+    background-color: gray;
+    color: white;
+    border-radius: 15px;
+    font-size: auto;
+    padding: 8px;
+}
+/* Кнопка в состоянии enabled (доступна) */
+QPushButton#right_btn_accept:enabled {
+    background-color: #283d3d;
+    color: white;
+}
+/* Кнопка в состоянии disabled (недоступна) */
+QPushButton#right_btn_accept:disabled {
+    background-color: gray;
+    color: lightgray;
+}
+/* Кнопка в состоянии pressed (нажата) */
+QPushButton#right_btn_accept:pressed {
+    background-color: #bfd7ed;
+    color: white;
+    /* Закругленные углы */
+    border-radius: 15px;
+    /* Размер шрифта */
+    font-size: auto;
+    padding: 8px;
+}
+/*****End of Usage model stylesheets.******/
+
+
+
+/*Cropper models styles:*/
+
+/*Left:*/
+QLabel#cropper_left_mainlabel {
+    color: #283d3d;
+    font-size: 10pt;
+}
+
+/*Right:*/
+QLabel#cropper_right_browse_label {
+    /*  #283d3d Зеленый фон */
+    background-color: #212121;
+    /* Белый текст */
+    color: white;
+    /* Закругленные углы */
+    border-radius: 30px;
+    /* Внутренние отступы */
+    padding: 15px;
+    /* Размер шрифта */
+    font-size: auto;
+}
+
+QLabel#cropper_browse_text {
+    /*  #283d3d Зеленый фон */
+    background-color: #212121;
+    /* Белый текст */
+    color: white;
+    /* Закругленные углы */
+    border-radius: 30px;
+    /* Внутренние отступы */
+    padding: 0px;
+    /* Размер шрифта */
+    font-size: auto;
+    margin: 0px;
+}
+
+QPushButton#cropper_browse_btn {
+    /* Исходное состояние кнопки */
+    background-color: #283d3d;
+    color: white;
+    border-radius: 15px;
+    font-size: auto;
+    padding: 8px;
+}
+    QPushButton#cropper_browse_btn:hover {
+        background-color: rgba(255,255,20,50);
+        color: white;
+    }
+    QPushButton#cropper_browse_btn:pressed {
+        background-color: #bfd7ed;
+        color: white;
+        /* Закругленные углы */
+        border-radius: 15px;
+        /* Размер шрифта */
+        font-size: auto;
+        padding: 8px;
+    }
+
+QLabel#rot_crop_checking_label{
+    /*  #283d3d Зеленый фон */
+    background-color: #212121;
+    /* Белый текст */
+    color: white;
+    /* Закругленные углы */
+    border-radius: 30px;
+    /* Внутренние отступы */
+    padding: 2px;
+    /* Размер шрифта */
+    font-size: auto;
+   
+}
+
+QRadioButton {
+    color: white; 
+    font-weight: 500; 
+    spacing: 10px; 
+}
+    QRadioButton::indicator {
+        width: 20px; 
+        height: 20px;
+        border-radius: 50%; 
+        border: 5px solid orange; 
+        background-color: lightyellow; 
+    }
+        QRadioButton::indicator:hover {
+            background-color: #fffacd; 
+        }
+        QRadioButton::indicator:checked {
+            background-color: #fffacd; 
+            border: 5px solid green;
+        }
+
+QGroupBox#rot_groupBox {
+    border-style: outset;
+    border-width: 1px;
+    border-color: #212121;
+    margin: 2px;
+    /*border: none;*/
+    margin: 0;
+    margin-top: 20px;
+    padding: 0px;
+    background-color: #212121;
+}
+    /*Стиль шапки центрального групбокса*/
+    QGroupBox#rot_groupBox::title {
+        background-color: transparent;
+        border-width: 2px;
+        padding: 5px;
+        border: 0px;
+        /*цвет надписи*/
+        color: white;
+    }
+
+
+QTabWidget::pane {
+    background: #212121;/* Тёмный фон всей области вкладок */
+    border: none; 
+}
+
+
+QTabBar::tab {
+    background: #333;
+    color: #ddd;
+    min-width: 180px;
+    padding: 10px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border: 1px solid #444;
+    margin: 2px;
+    max-width: 200px;
+    /* padding: 10px 20px; Увеличивает горизонтальные отступы */
+}
+
+    QTabBar::tab:selected {
+        background: #555;
+        text-align: justify;
+        color: #d19a66;
+        font-weight: 500;
+        border-bottom: 2px solid #d19a66;
+    }
+
+    QTabBar::tab:hover {
+        background: #444;
+    }
+
+QLCDNumber {
+    background: transparent; /* Transparent background */
+    color: orange; /* Orange digits */
+    font-size: 48pt;
+    border: none;
+    
+    /* No border */
+   
+    padding: 0px 0px 0px 0px; /* Сдвигаем цифры вправо */
+    font: 32pt "monospace"; /* Моноширинный шрифт */
+}
+
+
+QPushButton#trans {
+    background-color: transparent; /* Прозрачный фон */
+
+    border-width: 1px;
+    border-color: transparent;
+    border-radius: 20px;
+}
+    /* Опционально можно добавить эффекты при наведении и нажатии: */
+    QPushButton#trans:hover {
+        background-color: rgba(255, 255, 0, 0.1); /* полупрозрачный белый, едва заметный */
+        border-width: 1px;
+        border-color: transparent;
+        border-radius: 20px;
+    }
+
+    QPushButton#trans:pressed {
+        background-color: #bfd7ed;
+
+    }
+
+
+
+
+
+QGroupBox#gbox_settings {
+    /* Делаем границу и скругляем углы */
+    border: 4px solid #283d3d;
+    border-radius: 5px;
+    /* Отступ сверху, чтобы заголовок располагался аккуратнее */
+    margin: 3px,3px,3px,3px;
+    padding: 40px, 40px;
+}
+
+    /* Настраиваем стиль заголовка */
+    QGroupBox#gbox_settings::title {
+        /* Цвет текста */
+        color: white;
+        /* Цвет фона заголовка */
+        background-color: transparent;
+        /* Указываем, что заголовок отрисовывается поверх границы */
+        /*subcontrol-origin: margin;
+        subcontrol-position: top left;*/
+        /* Внутренние отступы, чтобы текст красиво располагался */
+        padding: 10px, 10px,10px, 10px;
+        margin-top: -3px;
+    }
+
+QDialog#setting_dialog {
+    background-color: #212121;
+    padding: 40px, 40px;
+    margin-top: 20px;
+}
+
+/*****End of cropper model stylesheets.******/
+
+
+
+
+/*****Begin of char model stylesheets.*******/
+QTableWidget#dataTable {
+    background-color: #2c2f33; /*Тёмный фон */
+    color: #FFFFFF; /* Белый цвет текста */
+    font-weight: bold; /* Чуть более жирный текст */
+    border: none; /* Граница таблицы зелёная */
+    gridline-color: #f9b37a;
+    /* Сетка таблицы тоже зелёная */
+}
+
+    /* Горизонтальный заголовок (верхние ячейки X, Y...) */
+#dataTable QHeaderView::section:horizontal {
+    background-color: #283d3d;
+    color: #FFFFFF;
+    font-weight: bold;
+    gridline-color: #f9b37a;
+    /* Можно сделать другой цвет, если нужно */
+}
+
+    /* Вертикальный заголовок (ячейки с номерами строк слева) */
+#dataTable QHeaderView::section:vertical {
+    background-color: #283d3d;
+    color: #FFFFFF;
+    font-weight: bold;
+
+}
+
+/* Угловая кнопка (левый верхний угол, где сходятся заголовки) */
+#dataTable QTableCornerButton::section {
+    background-color: #283d3d;
+    border: 1px solid #283d3d;
+}
+
+/* Вертикальный скроллбар таблицы */
+#dataTable QScrollBar:vertical {
+    background-color: white; /* общий фон скроллбара */
+    width: 14px; /* ширина ползунка (настройте под себя) */
+    margin: 0px; /* убираем возможные отступы */
+    border: solid orange; /* убираем рамку, если не нужна */
+}
+
+/* Сам «ползунок» вертикального скролла */
+#dataTable QScrollBar::handle:vertical {
+    background-color: #f9b37a; /* цвет ползунка */
+    min-height: 25px; /* минимальная высота, чтобы было что хватать */
+    border: 1px orange; /* обводка, если нужна */
+}
+
+/* Кнопки «вверх»/«вниз» на краях скроллбара */
+#dataTable QScrollBar::add-line:vertical,
+#dataTable QScrollBar::sub-line:vertical {
+    background-color: orange;
+    border: 1px solid orange;
+    height: 14px;
+
+}
+
+/* Если хотите убрать кнопки вообще, можно их спрятать:
+#dataTable QScrollBar::add-line:vertical,
+#dataTable QScrollBar::sub-line:vertical {
+    height: 0;
+}
+*/
+
+/* Горизонтальный скроллбар (если нужен) */
+#dataTable QScrollBar:horizontal {
+    background-color: white;
+    height: 14px;
+    margin: 0px;
+    border: none;
+}
+
+#dataTable QScrollBar::handle:horizontal {
+    background-color: #f9b37a;
+    min-width: 10px;
+    min-height: 15px;
+    border: none;
+}
+
+#dataTable QScrollBar::add-line:horizontal,
+#dataTable QScrollBar::sub-line:horizontal {
+    background-color: #f9b37a;
+    border: 5px solid green;
+    width: 25px;
+    subcontrol-origin: margin;
+}
+
+QPlainTextEdit {
+    background-color: #40444a;
+    color: white;
+    font-weight: bold;
+}
+
+
+QGroupBox#settingframe {
+    border-style: outset;
+    border-width: 1px;
+    border-color: transparent;
+    margin: 2px;
+    /*border: none;*/
+    margin: 0;
+    margin-top: 20px;
+    padding: 0px;
+    background-color: transparent;
+}
+    /*Стиль шапки центрального групбокса*/
+    QGroupBox#settingframe::title {
+        background-color: transparent;
+        border-width: 2px;
+        padding: 5px;
+        border: 0px;
+        /*цвет надписи*/
+        color: white;
+    }
+
+QLabel#settingText {
+    color: white;
+}
+
