@@ -1,4 +1,4 @@
-﻿import io
+import io
 import os
 from unittest import signals
 import cv2
@@ -234,8 +234,131 @@ class ArxDataEditor(object):
 
 
 class ArxSpectEditor(ArxDataEditor):
-    pass
+
+## add other func
+    def SDistorsionCorr(self, top=None, down=None, order_mse=None):
+        try:
+            # Получение данных
+            data = self._arxData.get_data()
+            if data is None:
+                print("[SDistorsionCorr] Error: нет данных.")
+                return None
+            
+            data_part = data[top:down]
+            data_columns = []
+            for i in range(0,len(data_part[0])):
+                    data_columns.append(list(data_part[:,i]))
+            
+            data_columns=list(data_columns)
+            
+            data_collumns_entire_image = []
+            for j in range(0,len(data[0])):
+                data_collumns_entire_image.append(list(data[:,j]))
+            
+            data_collumns_entire_image = list(data_collumns_entire_image)
+            
+            data_col_min = []
+            for i in range(0,len(data_columns)):
+                    data_col_min.append(np.min(data_columns[i]))
+            
+            index1 = []
+            for i in range(0,len(data_col_min)):
+                index1.append(data_columns[i].index(data_col_min[i]))
+            
+            median1 = []
+            n = 0
+            while n+300<len(index1):
+                k=n+300
+                median1.append([n,k,np.median(index1[n:k])])
+                n=k
+            else:
+                median1.append([n,-1,np.median(index1[n:])])
+
+            delt1=[]
+            for i in range(1,len(index1)):
+                delt1.append(abs(index1[i]-index1[i-1]))
+            delt_mean1 = np.array(delt1).sum()/len(delt1)    
+    
+            for i in median1:
+                for j in range(i[0],i[1]):
+                    if abs(i[2]-index1[j])>delt_mean1:
+                        index1[j] = i[2]
+            
+            xp1 = np.arange(0,len(index1))
+
+            order_mse = order_mse
+            len_x = len(xp1)
+            previous_mse = None  # Initialize as None
+
+            while True:
+                z1, residuals, *_ = np.polyfit(xp1, index1, order_mse, full=True)
+                mse = residuals[0] / len_x
+                if len(residuals) == 0:
+                    break
+                if previous_mse is not None and mse != 0:
+                    change_percentage = abs((mse - previous_mse) / previous_mse)
+                    if change_percentage <= 0.01:  # Check if change is <= 1%
+                        order_mse = order_mse - 1
+                        break
+                
+                order_mse += 1
+                previous_mse = mse
+
+            polynomial1 = np.poly1d(z1)
+            y_polynomial1 = polynomial1(xp1)
+
+            xp_tg1 = np.arange(0,len(y_polynomial1))
+            z_tg1 = np.polyfit(xp_tg1,y_polynomial1, 1)
+            polynomial_tg1 = np.poly1d(z_tg1)
+            y_polynomial_tg1 = polynomial_tg1(xp_tg1)
+            tg1 = polynomial_tg1[1]
+            mean_polynomial1 = y_polynomial1.mean()
+
+            delta_y1 = []
+            for i in range(0,len(index1)):
+                delta1 = mean_polynomial1 - polynomial1(xp1)[i]
+                delta_y1.append(int(round(delta1)))
+            
+            shape1 = np.array(data_collumns_entire_image).shape
+            new_pic_col1 = np.zeros(shape1,dtype="uint16")
+
+            for i in range(0,len(data_collumns_entire_image)):
+                for j in range(0,len(data_collumns_entire_image[i])):
+                    m  = j + delta_y1[i]
+                    if m<len(data_collumns_entire_image[i]):
+                        new_pic_col1[i][m] = data_collumns_entire_image[i][j] 
+                    else:
+                        m = m - len(data_collumns_entire_image[i])
+                        new_pic_col1[i][m] = data_collumns_entire_image[i][j]  
+    
+            data_rows1 = []
+            for i in range(0,len(new_pic_col1[0])):
+                data_rows1.append(list(new_pic_col1[:,i]))
+    
+            delta_x1 = np.arange(0,len(data_rows1))*tg1
+            shape1 = np.array(data_rows1).shape
+            new_data_rows1 = np.zeros(shape1,dtype="uint16")
+            for i in range(0,len(data_rows1)):
+                for j in range(0,len(data_rows1[i])):
+                    m  = int(round(j + 2*delta_x1[i]))
+                    if m<len(data_rows1[i]):
+                        new_data_rows1[i][m] = data_rows1[i][j] 
+                    else:
+                        m = m - len(data_rows1[i])
+                        new_data_rows1[i][m] = data_rows1[i][j] 
+    
+            aligned_image1 = new_data_rows1       
+            return aligned_image1
+    
+        except Exception as e:
+            print(f" Ошибка: {e}")
+            return None
+    
+
+
+
 #End of ArxSpectEditor
+
 
 
 
