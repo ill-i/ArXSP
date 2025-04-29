@@ -55,10 +55,14 @@ class MainWindow(QMainWindow):
         ##############################################
         #Setting the main window size as a% of the screen:
         # 80% of screen width_____________________________
-        self.window_width = int(screen_width)# * 0.8)#######
-        # 80% of screen height____________________________
-        self.window_height = int(screen_height)# * 0.8)#####  
-        self.resize(self.window_width,self.window_height)#
+        # Вместо 100% ширины:
+        self.window_width = int(screen_width * 0.8)
+        self.window_height = int(screen_height * 0.8)
+        self.resize(self.window_width, self.window_height)
+        self.move(
+            int((screen_width - self.window_width) / 2),
+            int((screen_height - self.window_height) / 2))
+
         ##################################################
 
     #HoLder of MainWidget & Terminal set as CentralWidget:
@@ -87,6 +91,7 @@ class MainWindow(QMainWindow):
     #Initialize DockWidget on right side:
         self.dashboard = None 
         self.init_dashboard()
+        self.setStyleSheet("background-color: white;")
 
     #GUITerminal(singleton) to show output:
         self.terminal = GUITerminal(self) #####
@@ -487,7 +492,7 @@ class MainWindow(QMainWindow):
 #Calling dark/light theme:
     def apply_theme(self, theme_file):
         try:
-            with open(theme_file, "r") as file:
+            with open(theme_file, "r", encoding="cp1251") as file:
                 app.setStyleSheet(file.read())
                 #self.setStyleSheet(file.read())
                 print(f"Stylesheet: " + str(theme_file))
@@ -540,6 +545,7 @@ def apply_matplotlib_theme(theme_name: str):
 # __main____________________________
 ####################################
 if __name__ == "__main__":
+
 
     #####CONFIG#####################
     app = QApplication(sys.argv)####
