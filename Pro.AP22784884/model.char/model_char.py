@@ -223,7 +223,7 @@ class Right(QVBoxLayout):
 		browse_label.setWordWrap(True) ########################
 		browse_label.setObjectName("cropper_right_browse_label") 
 	#Size of dark label #######################################
-		browse_label.setFixedSize(self.w/5.3, self.h/16) ###################
+		browse_label.setFixedSize(int(self.w/5.3), int(self.h/16)) ###################
 		#######################################################
 
 	#text above the button:
@@ -244,14 +244,14 @@ class Right(QVBoxLayout):
 		browse_text_label.setAlignment(Qt.AlignCenter) #####
 		browse_text_label.setObjectName("cropper_browse_text")
 	#Size of label for the text:
-		browse_text_label.setFixedSize(self.w/6, self.h/44) ############
+		browse_text_label.setFixedSize(int(self.w/6), int(self.h/44)) ############
 		####################################################
 
 	#Button to browse:
 		self.browse_button = QPushButton("Browse") ###########
 		self.browse_button.setObjectName("cropper_browse_btn")
 		self.browse_button.setEnabled(True) ##################
-		self.browse_button.setFixedSize(self.w/12, self.h/38) #############
+		self.browse_button.setFixedSize(int(self.w/12), int(self.h/38)) #############
 		######################################################
 
 	#Set btn & text(lbl) into layout then set layout into browse label widget:
@@ -274,7 +274,7 @@ class Right(QVBoxLayout):
 		main_tabs_label.setWordWrap(True) #########################
 		main_tabs_label.setObjectName("cropper_right_browse_label") 
 		#main_tabs_label.setFixedSize(720, 1000) ##################
-		main_tabs_label.setMinimumSize(self.w/5.3, self.h/2.2) ####
+		main_tabs_label.setMinimumSize(int(self.w/5.3), int(self.h/2.2)) ####
 		main_tabs_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 		###########################################################
 
@@ -290,7 +290,7 @@ class Right(QVBoxLayout):
 		tab_text_label.setObjectName("cropper_browse_text")
 		#Size of label for the text:
 		#tab_text_label.setFixedSize(600, 70) ##############
-		tab_text_label.setMinimumSize(self.w/6, self.h/44)
+		tab_text_label.setMinimumSize(int(self.w/6), int(self.h/44))
 		tab_text_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 		###################################################
 
@@ -302,7 +302,7 @@ class Right(QVBoxLayout):
 
 		#Main Tab:
 		tabs = QTabWidget() ################
-		tabs.setMinimumSize(self.w/5.3, self.h/2.7)#2.4)
+		tabs.setMinimumSize(int(self.w/5.3), int(self.h/2.7))#2.4)
 		#tabs.setMinimumSize(self.w/6.5, self.h/3)
 		tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
@@ -360,7 +360,7 @@ class Right(QVBoxLayout):
 		self.data_plot_button = QPushButton("PLOT") ###########
 		self.data_plot_button.setObjectName("cropper_browse_btn")
 		self.data_plot_button.setEnabled(True) ##################
-		self.data_plot_button.setFixedSize(self.w/16, self.h/38) #############
+		self.data_plot_button.setFixedSize(int(self.w/16), int(self.h/38)) #############
 		self.data_plot_button.clicked.connect(self.model.plotData)
 		tab_layout_data.addWidget(self.data_plot_button)
 

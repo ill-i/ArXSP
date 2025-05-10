@@ -950,7 +950,7 @@ class ColorChangingSlider(QWidget):
 			print(f"Файл не найден: {css_file}")  # Проверка пути
 			return
 
-		with open(css_file, "r") as file:
+		with open(css_file, "r", encoding="cp1251") as file:
 			self.setStyleSheet(file.read())
 
 	def update_slider_class(self):

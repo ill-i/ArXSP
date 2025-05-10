@@ -1,4 +1,4 @@
-﻿###############################################
+###############################################
 from multiprocessing import Lock
 from PyQt5.QtGui import*####################### 
 from PyQt5.QtCore import*###################### 
@@ -105,21 +105,20 @@ class FileHeaderEditor(QMainWindow):
         ]
 
         try:
-            #hdu = fits.open(filepath) 
             content = self.arx_data.get_header().tostring(sep="\n")
             self.lines = content.splitlines()
-            for line in self.lines:
-                self.text_edit.appendPlainText(line)
-                #self.text_edit.setPlainText(line)
 
-            locked_lines = [ i for i, line in enumerate(self.lines)
-                                if any(line.lstrip().startswith(key) for key in keywords)]
+            self.text_edit.setPlainText('\n'.join(self.lines))  # <- заменили append на set
 
-            self.text_edit.setLockedLines(locked_lines)
+            locked_lines = [
+                i for i, line in enumerate(self.lines)
+                if any(line.lstrip().startswith(key) for key in keywords)
+            ]
+
+            self.text_edit.setLockedLines(locked_lines)  # подсветка вызовется внутри
 
         except Exception as e:
-            pass
-            #print(f"Ошибка при чтении файла: {e}")
+            print(f"Ошибка при чтении файла: {e}")
 
 
 
@@ -132,12 +131,10 @@ class FileHeaderEditor(QMainWindow):
         header_from_text = '\n'.join(self.lines)
         
         return Header.fromstring(header_from_text, sep='\n')
-   
 
 
     def on_save_clicked(self):
         new_header = self.save_header()
-#___________________HEADER FOR SAVING IS HERE______________________
         self.headerSaved.emit(new_header)
         self.close()
 
