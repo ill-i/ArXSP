@@ -12,6 +12,9 @@ from scipy.signal import find_peaks
 from typing import Literal
 from numpy.polynomial import Polynomial     
 from scipy.optimize import fsolve 
+from datetime import datetime
+import csv
+
 
 class ArxData(object):
     
@@ -361,7 +364,59 @@ class ArxSpectEditor(ArxDataEditor):
             return None
     
 
+    def load_calib_poly(self, csv_path, date_obs_str=None):
 
+        def parse_date(date_str):
+            return datetime.strptime(date_str, "%d.%m.%Y")
+    
+        def convert_fits_date(fits_date):
+            # Example: "2023-11-18T04:50:12.81" -> "18.11.2023"
+            try:
+                return datetime.strptime(fits_date.split("T")[0], "%Y-%m-%d").strftime("%d.%m.%Y")
+            except Exception:
+                return None
+    
+        # Файл должен существовать
+        if not os.path.exists(csv_path):
+            raise FileNotFoundError(f"CSV file not found: {csv_path}")
+    
+        # Загружаем строки CSV
+        with open(csv_path, mode='r', newline='') as file:
+            reader = csv.DictReader(file)
+            rows = list(reader)
+    
+        if not rows:
+            raise ValueError("CSV file is empty or invalid.")
+    
+        # Определяем дату: из аргумента или из заголовка
+        if date_obs_str is None:
+            header = self._arxData.get_header()
+            fits_date = header.get("DATE-OBS", None)
+            if not fits_date:
+                raise ValueError("DATE-OBS not found in FITS header.")
+            date_obs_str = convert_fits_date(fits_date)
+            if not date_obs_str:
+                raise ValueError("Failed to parse DATE-OBS from FITS header.")
+        
+        try:
+            target_date = parse_date(date_obs_str)
+        except ValueError:
+            raise ValueError("Invalid date format. Expected dd.mm.yyyy")
+    
+        # Поиск ближайшей даты в таблице
+        closest_row = min(
+            rows,
+            key=lambda r: abs((parse_date(r["date_obs"]) - target_date).days)
+        )
+    
+        best_coeffs = np.array([float(val) for val in closest_row["best_poly"].split(";")])
+        extra_coeffs = np.array([float(val) for val in closest_row["extra_poly"].split(";")])
+        root = float(closest_row["root"])
+    
+        best_poly = np.poly1d(best_coeffs)
+        extra_poly = np.poly1d(extra_coeffs)
+    
+        return closest_row["date_obs"], best_poly, extra_poly, root
 
 #End of ArxSpectEditor
 
