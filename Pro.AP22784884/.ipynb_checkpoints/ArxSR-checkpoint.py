@@ -10,10 +10,6 @@ from abc import ABC, abstractmethod
 from scipy import signal ### v1.7.1
 from scipy.signal import find_peaks
 from typing import Literal
-from numpy.polynomial import Polynomial     
-from scipy.optimize import fsolve 
-from datetime import datetime
-import csv
 
 
 class ArxData(object):
@@ -37,11 +33,6 @@ class ArxData(object):
     #Read main data:
         try:
             fitsfile = fits.open(path)
-            print(f"[ArxData] FITS opened: {path}")
-            print(f"[ArxData] HDU count: {len(fitsfile)}")
-            print(f"[ArxData] HDU types: {[type(hdu) for hdu in fitsfile]}")
-            print(f"[ArxData] Primary HDU type: {type(fitsfile[0].data)}")
-
             self.__data = fitsfile[0].data
             self.__header = fitsfile[0].header
             self.__fname = os.path.basename(path).replace(".fit","").replace(".fits","")
@@ -249,11 +240,13 @@ class ArxSpectEditor(ArxDataEditor):
         try:
             # Получение данных
             data = self._arxData.get_data()
+            temp_header = self._arxData.get_header()
             if data is None:
                 print("[SDistorsionCorr] Error: нет данных.")
                 return None
             
             data_part = data[top:down]
+            print()
             data_columns = []
             for i in range(0,len(data_part[0])):
                     data_columns.append(list(data_part[:,i]))
@@ -356,7 +349,11 @@ class ArxSpectEditor(ArxDataEditor):
                         m = m - len(data_rows1[i])
                         new_data_rows1[i][m] = data_rows1[i][j] 
     
-            aligned_image1 = new_data_rows1       
+            aligned_image1 = new_data_rows1  
+            
+            temp_header.add_history(f"Image was processed: s-distortion was corrected, optical densities was converted to relative intensity by characteristic curve (polynomial) from calibration frames")
+            temp_header['DATE'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+            
             return aligned_image1
     
         except Exception as e:
@@ -364,59 +361,41 @@ class ArxSpectEditor(ArxDataEditor):
             return None
     
 
-    def load_calib_poly(self, csv_path, date_obs_str=None):
 
-        def parse_date(date_str):
-            return datetime.strptime(date_str, "%d.%m.%Y")
-    
-        def convert_fits_date(fits_date):
-            # Example: "2023-11-18T04:50:12.81" -> "18.11.2023"
-            try:
-                return datetime.strptime(fits_date.split("T")[0], "%Y-%m-%d").strftime("%d.%m.%Y")
-            except Exception:
-                return None
-    
-        # Файл должен существовать
-        if not os.path.exists(csv_path):
-            raise FileNotFoundError(f"CSV file not found: {csv_path}")
-    
-        # Загружаем строки CSV
-        with open(csv_path, mode='r', newline='') as file:
-            reader = csv.DictReader(file)
-            rows = list(reader)
-    
-        if not rows:
-            raise ValueError("CSV file is empty or invalid.")
-    
-        # Определяем дату: из аргумента или из заголовка
-        if date_obs_str is None:
-            header = self._arxData.get_header()
-            fits_date = header.get("DATE-OBS", None)
-            if not fits_date:
-                raise ValueError("DATE-OBS not found in FITS header.")
-            date_obs_str = convert_fits_date(fits_date)
-            if not date_obs_str:
-                raise ValueError("Failed to parse DATE-OBS from FITS header.")
-        
+
+    def OptDen2Int(self, root, best_poly, polynomial_extrapolate):
         try:
-            target_date = parse_date(date_obs_str)
-        except ValueError:
-            raise ValueError("Invalid date format. Expected dd.mm.yyyy")
-    
-        # Поиск ближайшей даты в таблице
-        closest_row = min(
-            rows,
-            key=lambda r: abs((parse_date(r["date_obs"]) - target_date).days)
-        )
-    
-        best_coeffs = np.array([float(val) for val in closest_row["best_poly"].split(";")])
-        extra_coeffs = np.array([float(val) for val in closest_row["extra_poly"].split(";")])
-        root = float(closest_row["root"])
-    
-        best_poly = np.poly1d(best_coeffs)
-        extra_poly = np.poly1d(extra_coeffs)
-    
-        return closest_row["date_obs"], best_poly, extra_poly, root
+            data = self._arxData.get_data()
+            if data is None:
+                print("[OptDen2Int] Error: нет данных.")
+                return None
+
+            data_image = np.log10(65535 / np.where(data == 0, 1e-32, data)) * 1000
+
+
+            vectorized_best_poly = np.vectorize(best_poly)
+            vectorized_extrapolate = np.vectorize(polynomial_extrapolate)
+
+         
+            data_calib = np.where(
+                data_image < root,
+                vectorized_extrapolate(data_image),
+                vectorized_best_poly(data_image)
+            )
+
+            # Визуализация
+            # plt.figure(figsize=(10, 4))
+            # plt.imshow(data_calib, cmap='gray')
+            # plt.title("Calibrated Image")
+            # plt.tight_layout()
+            # plt.show()
+
+            return data_calib
+
+        except Exception as e:
+            print(f"[OptDen2Int] Ошибка: {e}")
+            return None
+
 
 #End of ArxSpectEditor
 
@@ -567,89 +546,8 @@ class ArxCollibEditor(ArxDataEditor):
         return data_smoothed, peak_indx
 #End of Privates________________________________________________________________________________________________________
 
-
-
-
-
-    def fit_monotonic_poly(self, x, y):
-
-        MAX_DEGREE = 15
-        candidates = []
-        sorted_indices = np.argsort(x)
-        x_sorted = x[sorted_indices]
-        y_sorted = y[sorted_indices]
-
-        for degree in range(1, MAX_DEGREE + 1):
-            mse, poly = self.get_poly_mse(x_sorted, y_sorted, degree)
-            y_pred = poly(x_sorted)
-            if self.is_strictly_monotonic(y_pred):
-                smoothness = self.is_smooth(poly, x_sorted)
-                candidates.append((degree, poly, smoothness))
-
-        if not candidates:
-            raise ValueError("No suitable monotonous polynomial was found.")
-
-        sorted_candidates = sorted(candidates, key=lambda c: c[2])
-        median_candidate = sorted_candidates[len(sorted_candidates) // 2]
-        best_poly = median_candidate[1]
-
-        def poly_function(xv):
-            return best_poly(xv)
-
-        root = fsolve(poly_function, 1)[0]
-
-        # Extrapolation
-        x_test = np.linspace(min(x_sorted), max(x_sorted), 500)
-        x_points = [0, x_test[0]]
-        y_points = [0, best_poly(x_test[0])]
-        extrapolation_poly = Polynomial.fit(x_points, y_points, 20).convert()
-
-        def polynomial_extrapolate(xv):
-            return extrapolation_poly(xv)
-
-        return best_poly, polynomial_extrapolate, root
-        
-    @staticmethod
-    def get_poly_mse(x, y, degree):
-        coeffs = np.polyfit(x, y, degree)
-        poly = np.poly1d(coeffs)
-        y_pred = poly(x)
-        mse = ((y - y_pred) ** 2).mean()
-        return mse, poly
-
-    @staticmethod
-    def is_strictly_monotonic(y_vals):
-        diff = np.diff(y_vals)
-        return np.all(diff > 0) or np.all(diff < 0)
-
-    @staticmethod
-    def is_smooth(poly, x):
-        derivative = np.polyder(poly)
-        derivative_values = derivative(x)
-        return np.std(derivative_values)
-
-    def plot_polynomials(self,  x, y, best_poly, polynomial_extrapolate):
-
-        sorted_indices = np.argsort(x)
-        x_sorted = x[sorted_indices]
-        y_sorted = y[sorted_indices]
-
-        x_test = np.linspace(min(x_sorted), max(x_sorted), 500)
-        x_extrapolate = np.linspace(0, x_test[0], 100)
-        y_extrapolate = [polynomial_extrapolate(xv) for xv in x_extrapolate]
-
-        x_full = np.concatenate([x_extrapolate, x_test])
-        y_full = np.concatenate([y_extrapolate, best_poly(x_test)])
-
-        plt.figure(figsize=(10, 6))
-        plt.scatter(x_sorted, y_sorted, color='blue', s=20, label='Actual Data')
-        plt.plot(x_full, y_full, 'r--', label='Fitted + Extrapolated Polynomial')
-        plt.legend()
-        plt.show()
-
-        
 #End of ArxCollibEditor
-####################################################################################################################
+
 
 
 

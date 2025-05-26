@@ -130,32 +130,7 @@ class model_char(object):
 	def plotData(self):
 		self.__left.Clear()
 
-	def loadCalibration(self):
-		try:
-			editor = ArxSpectEditor(self.arx_data)
-			matches = editor.select_calib_poly()
-
-			if not matches:
-				print("No valid calibrations found")
-				return
-
-			# Покажем список — пока в консоли
-			print("\nAvailable calibrations:")
-			for i, row in enumerate(matches[:5]):
-				print(f"{i}: {row['date_obs']} (Δ{row['_delta_days']} дн.)")
-
-			# Выбираем ближайший
-			selected = matches[0]
-			best_poly = np.poly1d([float(x) for x in selected["best_poly"].split(";")])
-			extra_poly = np.array([float(x) for x in selected["extra_poly"].split(";")])
-			root = float(selected["root"])
-
-			print(f"\n✅ Loaded polynomial from {selected['date_obs']}")
-			# Здесь можно сохранить в self или нарисовать
-			# например: self.__left.plot_poly(best_poly)
-
-		except Exception as e:
-			print(f"[Calibration Load Error] {e}")
+	
 
 #End of model ###############################################
 
