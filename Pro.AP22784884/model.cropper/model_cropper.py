@@ -38,10 +38,13 @@ from PyQt5.QtWidgets import QVBoxLayout ###
 from PyQt5.QtWidgets import QSlider #######
 from PyQt5.QtWidgets import QGroupBox #####
 from PyQt5.QtWidgets import QSizePolicy ###
-from PyQt5.QtWidgets import QSpinBox
+from PyQt5.QtWidgets import QMessageBox ###
+from PyQt5.QtWidgets import QSpinBox ######
 ###########################################
 
 import matplotlib.pyplot as plt
+from datetime import datetime
+import os
 
 
 # Добавляем родительскую папку в sys.path
@@ -49,11 +52,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from ArxSR import* 
 from HeaderEditWindow import FileHeaderEditor
 
+
 class model_cropper(object):
 
 #Initializer:
-	def __init__(self):
+	def __init__(self,parent=None):
 		super().__init__()
+        
+		self.win_w = parent.window_width
+		self.win_h = parent.window_height
         
 	#ui_components:
 		self.__left = Left(self)
@@ -61,6 +68,7 @@ class model_cropper(object):
 
 	#data holder:
 		self.arx_data = None
+		self.colormap = cv2.COLORMAP_VIRIDIS
 
 	#manipulation holder:
 		self.degree = 0
@@ -70,6 +78,14 @@ class model_cropper(object):
 		self.rigval = 0
 		self.topval = 0
 		self.dowval = 0
+
+		self.hor_thickness = 6
+		self.deg_thickness = 6
+		self.hor_color = (0,79,0)
+		self.deg_color = (76,0,0)
+
+		self.crop_thickness = 6
+		self.crop_color = (255,79,0)
 
 	#Checking of img loading:
 		self.isImgLoaded = False
@@ -88,6 +104,34 @@ class model_cropper(object):
 		self.dialog_parent = parent	####
 	#...................................
 
+	def set_ColorMap(self, colormap):
+		self.colormap = colormap
+		self.ImgReLoad()
+	#................................
+
+
+	def set_HorThickness(self, hor_thick):
+		self.hor_thickness = hor_thick
+
+	def set_HorColor(self, hor_color):
+		self.hor_color = hor_color
+
+	def set_DegThickness(self, deg_thick):
+		self.deg_thickness = deg_thick
+
+	def set_DegColor(self, deg_color):
+		self.deg_color = deg_color
+
+	def set_CropThickness(self, crop_thick):
+		self.crop_thickness = crop_thick
+
+	def set_CropColor(self, crop_color):
+		self.crop_color = crop_color
+	#......................................
+
+	def ApplyLineStyle(self):
+		self.__left.set_CropStyle(self.crop_thickness, self.crop_color )
+		self.__left.set_RotateStyle(self.hor_thickness, self.hor_color, self.deg_thickness, self.deg_color)
 
 #Get instances Right & Left:
 	def getLeftWidget(self):
@@ -131,6 +175,81 @@ class model_cropper(object):
 			print(f"Unexpected {err=}, {type(err)=}")
 			return
 #End of ImgLoad__________________________________________
+
+	#ReLoad only png not Data:
+	def ImgReLoad(self):
+		
+		if self.fileName is None:
+			return
+		if self.isImgLoaded is False:
+			return
+		if not self.fileName:
+			return
+		#show png in the label not data:
+		self.__left.imgLoad()
+		self.__right.reset_sliders()
+#End of ImgReLoad________________________________________
+
+	#Save fits file as a result:
+	def fitsSave(self):
+		print("going to save fits file")
+		msg = QMessageBox()
+		print(f"request to save fits file")
+
+
+		try:
+			data = self.arx_data.get_data()
+			header = self.arx_data.get_header()
+
+			if data is None or header is None:
+				msg.setWindowTitle("Error:")
+				msg.setText("data or header is None!!!")
+				msg.setStandardButtons(QMessageBox.Ok)
+				msg.exec_()
+				return
+
+			# Get file name without path and extensions:
+			base_name = os.path.splitext(os.path.basename(self.fileName))[0]
+			
+			# Add data time:
+			today_str = datetime.today().strftime('%Y-%m-%d')
+			suggested_name = f"{base_name}_{today_str}.fits"
+
+			# Open Dialog "Save as"
+			save_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+				self.dialog_parent,
+				"Save FITS File As",
+				QtCore.QDir.homePath() + "/" + suggested_name,
+				"FITS files (*.fits *.fit)"
+			)
+
+			if save_path:
+				# Extension check:
+				if not save_path.lower().endswith(('.fits', '.fit')):
+					save_path += ".fits"
+
+				#self.arx_data.save_as_fits(save_path)
+
+				hdu = fits.PrimaryHDU(data, header=header)
+				hdulist = fits.HDUList([hdu])
+				hdulist.writeto(save_path, overwrite=True)
+				print(f"File saved as: {save_path}")
+
+				msg.setWindowTitle("Success")
+				msg.setText(" File has been saved!!!")
+				msg.setStandardButtons(QMessageBox.Ok)
+				msg.exec_()
+			else: 
+				msg.setWindowTitle("Cancelled")
+				msg.setText("Operation was cancelled by user.")
+				msg.setStandardButtons(QMessageBox.Ok)
+				msg.exec_()
+
+		except Exception as e:
+			msg.setWindowTitle("Error...")
+			msg.setText("Error saving FITS file!")
+			msg.setStandardButtons(QMessageBox.Ok)
+			msg.exec_()
 
 
 	def set_degree(self, degree):
@@ -179,16 +298,13 @@ class model_cropper(object):
 
 #Edit button clicked:
 	def EditHeader(self):
-
-		dialog = FileHeaderEditor(self.arx_data, self.dialog_parent)
-		#dialog.setWindowModality(Qt.ApplicationModal)
-		dialog.headerSaved.connect(self.handle_new_header)
+		print("Header Editor has been run")
+		dialog = FileHeaderEditor(self.arx_data, self, self.dialog_parent)
 		dialog.show()
 
-		#dialog = FileHeaderEditor(self.arx_data,self.dialog_parent)
-		#dialog.show()
-	
-	def handle_new_header(self, header):
+
+	def set_header(self, header):
+		self.arx_data.set_header(header)
 		print("Получен header:", header)
 
 
@@ -245,7 +361,6 @@ class model_cropper(object):
 		self.__left.imgLoad()
 #End of crop fits__________________________________________________________________
 
-
 	def crop_Cancel(self):
 
 		if self.prev_crop is None:
@@ -283,7 +398,7 @@ class Left(QLabel):
 		###################################################################
 		
 	#Init it's parent - model cropper:
-		self.parent = parent
+		self.model = parent
 		
 	#w,h - the size of main QLabel:
 		self.w = self.width() #####
@@ -293,6 +408,14 @@ class Left(QLabel):
 	#the image to draw:
 		self.loaded_image = None
 		self.tmp_image = None
+
+		self.hor_thickness = 6
+		self.deg_thickness = 6
+		self.hor_color = (0,79,0)
+		self.deg_color = (76,0,0)
+
+		self.crop_thickness = 6
+		self.crop_color = (255,79,0)
 		########################
 
 	#curr row for the animation:
@@ -308,10 +431,23 @@ class Left(QLabel):
 #End of Init of Left....................................
 
 
+	def set_RotateStyle(self, hor_thick, hor_color, deg_thick, deg_color):
+		self.hor_thickness = hor_thick
+		self.deg_thickness = deg_thick
+
+		self.hor_color = hor_color
+		print(f"hor_color = {hor_color}")
+		self.deg_color = deg_color
+
+	def set_CropStyle(self, crop_thick, crop_color):
+		self.crop_thickness = crop_thick
+		self.crop_color = crop_color
+
 #re-set image:
 	def set_reset(self):
 	#get copy of origin image:
-		self.tmp_image = self.origin_image.copy()
+		#self.tmp_image = self.origin_image.copy()
+		self.tmp_image = self.loaded_image.copy()
 		self.update() ############################
 		return self.w ############################
 	#.............................................
@@ -321,7 +457,7 @@ class Left(QLabel):
 	def imgLoad(self):
 		try:
 		#read with cv2:
-			self.loaded_image = self.parent.arx_data.get_image()
+			self.loaded_image = self.model.arx_data.get_image(self.model.colormap)
 		#animation:
 			try:
 				self.startAnimation()
@@ -396,10 +532,7 @@ class Left(QLabel):
 
 #Painting Horizontal line:
 	def paintLineRotateHorizont(self,horvalue, deg):
-		thickness = 6
-		color = (0,79,0)
-		base_color = (76,0,0)
-		
+
 		w = self.loaded_image.shape[1]
 		h = self.loaded_image.shape[0]
 		
@@ -411,8 +544,8 @@ class Left(QLabel):
 		point0_3, point0_4 =self.rotateHorizontLine(point1[0],point1[1],point2[0],point2[1],0)
 
 		self.tmp_image = self.loaded_image.copy()
-		self.tmp_image = cv2.line(self.tmp_image, point3, point4, color, thickness)
-		self.tmp_image = cv2.line(self.tmp_image, point0_3, point0_4, base_color, thickness)
+		self.tmp_image = cv2.line(self.tmp_image, point3, point4, self.deg_color, self.deg_thickness)
+		self.tmp_image = cv2.line(self.tmp_image, point0_3, point0_4, self.hor_color, self.hor_thickness)
 
 		try:
 			self.update()
@@ -424,14 +557,14 @@ class Left(QLabel):
 
 #Painting Crop lines:
 	def PaintCropLines(self, right, left, top, down):
-			
-		color = (255,79,0)#norm
+		#Here
+		color = self.crop_color#norm
 		
 		color_rl = (0,0,255)
 		color_td = (0,0,255)
 		
 		#Line thickness of 9 px
-		thickness = 8
+		thickness = self.crop_thickness
 		
 		w = self.loaded_image.shape[1]
 		h = self.loaded_image.shape[0]
@@ -476,7 +609,7 @@ class Right(QVBoxLayout):
 	#Init Main Layout:
 		super().__init__() ##################
 		self.setAlignment(Qt.AlignTop) ######
-		self.setContentsMargins(5, 5, 5, 5) #
+		self.setContentsMargins(0, 0, 0, 0) #
 		#####################################
 
 	#model as parent:
@@ -485,12 +618,13 @@ class Right(QVBoxLayout):
 	#Browsing__________________________________________________
 	#This is label to set Layout with widgets (text & btn):
 		browse_label = QLabel() ###############################
+		browse_label.setAlignment(Qt.AlignTop)
 		browse_label.setAlignment(Qt.AlignCenter) #############
 		#перенос текста #######################################
 		browse_label.setWordWrap(True) ########################
 		browse_label.setObjectName("cropper_right_browse_label") 
 	#Size of dark label #######################################
-		browse_label.setFixedSize(720, 160) ###################
+		browse_label.setFixedSize(int(self.model.win_w/5), int(self.model.win_h/13)) ###################
 		#######################################################
 
 	#text above the button:
@@ -499,11 +633,11 @@ class Right(QVBoxLayout):
             """
 		browse_text_label = QLabel(browse_text, browse_label)
 		#######################################################
-
+		browse_text_label.setAlignment(Qt.AlignTop)
 	#Layout to hold text and button:
 		layout = QVBoxLayout() #############################
-		layout.setSpacing(10) ##############################
-		layout.setContentsMargins(0, 0, 0, 0) ##############
+		layout.setSpacing(1) ##############################
+		layout.setContentsMargins(0, 0, 0, 3) ##############
 		layout.setAlignment(Qt.AlignTop) ###################
 		
 	#label for the text:
@@ -511,19 +645,20 @@ class Right(QVBoxLayout):
 		browse_text_label.setAlignment(Qt.AlignCenter) #####
 		browse_text_label.setObjectName("cropper_browse_text")
 	#Size of label for the text:
-		browse_text_label.setFixedSize(600, 50) ############
+		browse_text_label.setFixedSize(int(self.model.win_w/6), int(self.model.win_h/20)) ############
 		####################################################
 
 	#Button to browse:
 		self.browse_button = QPushButton("Browse") ###########
+		#self.browse_button.setAlignment(Qt.AlignTop)
 		self.browse_button.setObjectName("cropper_browse_btn")
 		self.browse_button.setEnabled(True) ##################
-		self.browse_button.setFixedSize(400, 70) #############
+		self.browse_button.setFixedSize(int(self.model.win_w/12), int(self.model.win_h/30)) #############
 		######################################################
 
 	#Set btn & text(lbl) into layout then set layout into browse label widget:
 		browse_label.setLayout(layout) #######################################
-		layout.addWidget(browse_text_label, 10, Qt.AlignHCenter) #############
+		layout.addWidget(browse_text_label, 0, Qt.AlignHCenter) #############
 		layout.addWidget(self.browse_button, 0, Qt.AlignHCenter) #############
 
 	#Set browse label into main QVBoxLayout:
@@ -569,11 +704,13 @@ class Right(QVBoxLayout):
 
 		#Main Tab:
 		tabs = QTabWidget() ################
+		tabs.setObjectName("cropper_tab_widget")
 		tabs.setMinimumSize(720, 900)
 		tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
 		#Number-1 tab page:
 		tab_1 = QWidget() ##################
+		tab_1.setObjectName("cropper_tab_widget") #??????????????
 		tab_layout_rotate = QVBoxLayout() ##
 		tab_layout_rotate.setAlignment(Qt.AlignTop)
 		tab_1.setLayout(tab_layout_rotate) #
@@ -582,6 +719,7 @@ class Right(QVBoxLayout):
 
 		#Number-2 tab page:
 		tab_2 = QWidget()  #################
+		tab_2.setObjectName("cropper_tab_widget")
 		tab_layout_crop = QVBoxLayout() ####
 		tab_2.setLayout(tab_layout_crop) ###
 		tab_layout_crop.setSpacing(1)
@@ -896,7 +1034,7 @@ class Right(QVBoxLayout):
 		######################################################################
 
 	#Init connections:
-		#self.save_button.clicked.connect(self.model.ImgLoad)
+		self.save_button.clicked.connect(self.model.fitsSave)
 
 
 
@@ -950,7 +1088,7 @@ class ColorChangingSlider(QWidget):
 			print(f"Файл не найден: {css_file}")  # Проверка пути
 			return
 
-		with open(css_file, "r", encoding="cp1251") as file:
+		with open(css_file, "r",encoding="windows-1251") as file:
 			self.setStyleSheet(file.read())
 
 	def update_slider_class(self):
@@ -1067,6 +1205,8 @@ class QLabeledSlider(QWidget):
 
 
 # Dialogs Window:
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QColorDialog
 class SettingDialog(QMainWindow):
 
 	def __init__(self, mainparent=None, model=None):
@@ -1140,6 +1280,7 @@ class SettingDialog(QMainWindow):
 		    ("PLASMA", cv2.COLORMAP_PLASMA),
 		    ("VIRIDIS", cv2.COLORMAP_VIRIDIS),
 		    ("CIVIDIS", cv2.COLORMAP_CIVIDIS),
+			("CIVIDIS", cv2.COLORMAP_CIVIDIS),
 		]
 		for name, cmap_id in self.colormaps_list:
 			self.color_combo.addItem(name, userData=cmap_id)
@@ -1302,6 +1443,14 @@ class SettingDialog(QMainWindow):
 		central_layout.addWidget(crop_gbox)
 	#End of Rotation Degree GroupBox#################################################
 
+		#CONNECTION:
+		self.rot_hor_color_button.clicked.connect(lambda: self.choose_color(self.rot_hor_color_button))
+		self.rot_deg_color_button.clicked.connect(lambda: self.choose_color(self.rot_deg_color_button))
+		self.crop_color_button.clicked.connect(lambda: self.choose_color(self.crop_color_button))
+
+		self.rot_hor_color_button.selected_color = QColor("#00008B")
+		self.rot_deg_color_button.selected_color = QColor("#00FF00")
+		self.crop_color_button.selected_color = QColor("#0000FF")
 
 		self.btn_crop_ok = QPushButton("Crop") ###################################
 		self.btn_crop_ok.setObjectName("cropper_browse_btn") #######################
@@ -1312,7 +1461,7 @@ class SettingDialog(QMainWindow):
 		self.ok_button.setObjectName("cropper_browse_btn") 
 		self.ok_button.setFixedSize(180,65)
 
-		#self.ok_button.clicked.connect(self.on_ok_clicked)
+		self.ok_button.clicked.connect(self.on_ok_clicked)
 
 		central_layout.addWidget(self.ok_button,alignment=Qt.AlignRight)
 
@@ -1320,14 +1469,42 @@ class SettingDialog(QMainWindow):
 		self.setMinimumSize(self.size())
 
 
-
+	def choose_color(self, button):
+		color = QColorDialog.getColor()
+		if color.isValid():
+			button.setStyleSheet(f"background-color: {color.name()};")
+			button.selected_color = color  # Можно сохранить цвет прямо в кнопку
 
 	def on_ok_clicked(self):
-	    pass
 	    # Получаем индекс и значение (ID colormap) из ComboBox:
-	    #selected_index = self.color_combo.currentIndex()
-	    #cmap_id = self.color_combo.itemData(selected_index)
+		selected_index = self.color_combo.currentIndex()
+		cmap_id = self.color_combo.itemData(selected_index)
 
+		hor_color = (self.rot_hor_color_button.selected_color.red(), 
+			   self.rot_hor_color_button.selected_color.green(),
+			  self.rot_hor_color_button.selected_color.blue())
+
+		deg_color = (self.rot_deg_color_button.selected_color.red(), 
+			   self.rot_deg_color_button.selected_color.green(),
+			  self.rot_deg_color_button.selected_color.blue())
+
+		crop_color = (self.crop_color_button.selected_color.red(), 
+			   self.crop_color_button.selected_color.green(),
+			  self.crop_color_button.selected_color.blue())
+
+		self.Model.set_HorThickness(self.rot_hor_thick_spinbox.value())
+		self.Model.set_HorColor(hor_color)
+		self.Model.set_DegThickness(self.rot_deg_thick_spinbox.value())
+		self.Model.set_DegColor(deg_color)
+		self.Model.set_CropThickness(self.crop_thick_spinbox.value())
+		self.Model.set_CropColor(crop_color)
+
+
+		self.Model.set_ColorMap(cmap_id)
+		self.Model.ApplyLineStyle()
+
+		self.close()
+		
 
 #___________________________________________
 

@@ -21,12 +21,15 @@ import os #################################
 class model_usage(QObject):
 
 #Initializer:
-	def __init__(self):
+	def __init__(self, parent=None):
 		super().__init__()
+        
+		self.win_w = parent.window_width
+		self.win_h = parent.window_height
         
 		#ui_components:
 		self.__left = Left()
-		self.__right= Right()
+		self.__right= Right(self)
 
 
 #Get instances Right & Left:
@@ -81,12 +84,16 @@ class Left(QWidget):
 class Right(QVBoxLayout):
 
 #Initializer:
-	def __init__(self):
+	def __init__(self, parent):
 		super().__init__()
-
+        
+	#The sizes of MainWindow:
+		self.win_w = parent.win_w
+		self.win_h = parent.win_h
+        
 		self.setAlignment(Qt.AlignTop)
-		self.setContentsMargins(20, 60, 20, 20)
-		self.setSpacing(10)
+		self.setContentsMargins(10, 20, 10, 10)
+		self.setSpacing(5)
 
 		message_label = QLabel()
 
@@ -115,7 +122,7 @@ class Right(QVBoxLayout):
 		message_label.setWordWrap(True)
 		message_label.setOpenExternalLinks(True)
 		message_label.setObjectName("usage_right_label")
-		message_label.setFixedSize(700, 800) 
+		message_label.setFixedSize(int(self.win_w/5), int(self.win_h/3)) #Here
 
 		agreement_checkbox = QCheckBox("I accept the agreement.")
 		agreement_checkbox.setObjectName("usage_right_checkbox")
@@ -123,7 +130,7 @@ class Right(QVBoxLayout):
 		accept_button = QPushButton("Continue")
 		accept_button.setObjectName("right_btn_accept")
 		accept_button.setEnabled(False)
-		accept_button.setFixedSize(240, 70)
+		accept_button.setFixedSize(int(self.win_w/12), int(self.win_h/24)) #HERE...................
 		# Связываем чекбокс с активацией кнопки
 		agreement_checkbox.stateChanged.connect(
             lambda state: accept_button.setEnabled(state == Qt.Checked)

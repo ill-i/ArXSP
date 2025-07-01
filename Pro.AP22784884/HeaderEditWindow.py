@@ -32,10 +32,12 @@ class FileHeaderEditor(QMainWindow):
 
     headerSaved = pyqtSignal(Header)
 
-    def __init__(self, arx_data, parent=None, ):
+    def __init__(self, arx_data, model, parent=None):
         super().__init__(parent)
         #Your data (It is ArxData object) to work
         self.arx_data = arx_data
+        self.model = model
+        print(f"message from HEADER EDITOR {self.model}")
         self.lines = None
         self.initializer()
 #End of constructor_______
@@ -126,19 +128,116 @@ class FileHeaderEditor(QMainWindow):
 
 #_______________________________________________________________________________________________
 
-    def save_header(self):
-        self.lines.append("END")
 
-        header_from_text = '\n'.join(self.lines)
-        
-        return Header.fromstring(header_from_text, sep='\n')
-   
+    #def save_header(self):
+    #    full_text = self.text_edit.toPlainText()
+    #    lines = full_text.splitlines()
+    #
+    #    while lines and lines[-1].strip() == "":
+    #        lines.pop()
+    #
+    #    if not lines or lines[-1].strip() != "END":
+    #        lines.append("END")
+    #    self.lines = lines
+    #
+    #    header_from_text = '\n'.join(lines)
+    #
+    #    return Header.fromstring(header_from_text, sep='\n')
+
+    def make_header_from_lines_smart(self, lines: list[str]):
+        fixes = []
+        warnings = []
+        cards = []
+
+        for i, line in enumerate(lines, 1):
+            orig = line
+            line = line.strip()
+
+            if not line:
+                continue
+
+            if '=' not in line and line.startswith(('COMMENT', 'HISTORY', 'END')):
+                tokens = line.split(None, 1)
+                key = tokens[0]
+                value = tokens[1] if len(tokens) > 1 else ''
+                cards.append((key, value))
+                continue
+
+            if '=' not in line:
+                tokens = line.split()
+                if len(tokens) >= 2:
+                    key, value = tokens[0], ' '.join(tokens[1:])
+                    fixes.append(f"Row {i}: was added '=' → {key} = {value}")
+                    line = f"{key} = {value}"
+                else:
+                    warnings.append(f"Row {i}: was not processed: '{orig}'")
+                    continue
+
+            key, rest = line.split('=', 1)
+            key = key.strip()[:8]
+            if len(key) > 8:
+                warnings.append(f"Row {i}: key '{key}' was cutted to 8 symbols")
+
+            if '/' in rest:
+                value_part, comment = rest.strip().split('/', 1)
+                comment = comment.strip()
+            else:
+                value_part, comment = rest.strip(), None
+
+            value_str = value_part.strip()
+
+            if value_str.lower() in ['true', 'false']:
+                value = value_str.lower() == 'true'
+                fixes.append(f"Row {i}: boolean '{value_str}' → {value}")
+            elif value_str.startswith("'") and value_str.endswith("'"):
+                value = value_str[1:-1]
+            else:
+                try:
+                    if '.' in value_str or 'E' in value_str.upper():
+                        value = float(value_str)
+                    else:
+                        value = int(value_str)
+                except ValueError:
+                    fixes.append(f"Row {i}: quotes were added '{value_str}'")
+                    value = value_str
+
+            cards.append((key, value, comment) if comment else (key, value))
+
+        return Header(cards), fixes, warnings
+
+    def save_header(self):
+        text = self.text_edit.toPlainText()
+        lines = text.splitlines()
+
+        try:
+            header, fixes, warnings = self.make_header_from_lines_smart(lines)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"During process header an error was accured:\n{str(e)}")
+            return None
+
+        if fixes:
+            QMessageBox.information(
+                self,
+                "Autoreduction",
+                "The next changew were made automaticaly:\n\n" + "\n".join(fixes)
+            )
+
+        if warnings:
+            QMessageBox.warning(
+                self,
+                "Attention!",
+                "Some of rows were not saved because they were not reducted correctly:\n\n" + "\n".join(warnings)
+            )
+    
+        return header
+  
 
 
     def on_save_clicked(self):
         new_header = self.save_header()
 #___________________HEADER FOR SAVING IS HERE______________________
-        self.headerSaved.emit(new_header)
+        #self.headerSaved.emit(new_header)
+        self.model.set_header(new_header)
         self.close()
 
 

@@ -1,5 +1,4 @@
-﻿#Qt5 files:
-###############################################
+﻿##### ###############################################
 from PyQt5.QtGui import*####################### 
 from PyQt5.QtCore import*###################### 
 from PyQt5.QtWidgets import*###################
@@ -7,7 +6,11 @@ from PyQt5.QtGui import QScreen################
 from PyQt5.QtWidgets import QFrame#############
 from PyQt5 import QtGui, QtCore, QtWidgets#####
 ###############################################
-
+#Qt__________________________________________
+from PyQt5 import QtGui, QtCore, QtWidgets###
+from PyQt5.QtWidgets import* ################
+from PyQt5.QtCore import* ###################
+from PyQt5.QtGui import* ####################
 #system files:
 import sys#############
 import os #############
@@ -44,7 +47,7 @@ class MainWindow(QMainWindow):
         self.apply_theme("dark.css")
 
     #Setting Title & Icon of Main Window:
-        self.setWindowTitle("AP22784884")######################
+        self.setWindowTitle("Archive Spectra Processing")######################
         self.setWindowIcon(QIcon("resources/main_icon.png"))
 
     #Obtain Screen Sizes:
@@ -99,7 +102,7 @@ class MainWindow(QMainWindow):
 
     #Splitter creates as a widget which will be added into layout:
         self.mainhor_splitter = QSplitter(Qt.Vertical) ###############
-        self.mainhor_splitter.setHandleWidth(2) ######################
+        self.mainhor_splitter.setHandleWidth(4) ######################
         self.mainhor_splitter.setObjectName('mainhorsplitter') #######
         ##############################################################
 
@@ -139,11 +142,12 @@ class MainWindow(QMainWindow):
             self.dashboard.setAllowedAreas(Qt.RightDockWidgetArea|Qt.LeftDockWidgetArea)
             self.addDockWidget(Qt.RightDockWidgetArea,  self.dashboard)
 
+            
         #Temp size definition and Priority:
             self.dashboard.setFloating(False) ##########################################
-            self.dashboard.setMinimumWidth(800) ########################################
-            self.dashboard.setMaximumWidth(1200) #######################################
-            self.dashboard.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) #
+            #self.dashboard.setMinimumWidth(int(self.window_width/3)) ########################
+            self.dashboard.setMaximumWidth(int(self.window_width/2)) ########################
+            #self.dashboard.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) #
             ############################################################################
         else: self.dashboard.Show()
         self.dashboard.hide()
@@ -257,6 +261,11 @@ class MainWindow(QMainWindow):
         self.addToolBar(Qt.LeftToolBarArea, self.Tb) ####################
         self.Tb.setAllowedAreas(Qt.LeftToolBarArea | Qt.RightToolBarArea)
         #Set not to move the toolbar:
+        
+        self.Tb.setMaximumWidth(int(self.window_width/18))
+        self.Tb.setMinimumWidth(int(self.window_width/18)) 
+       
+        self.Tb.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) #
         self.Tb.setMovable(False) ########################################
         #################################################################
 
@@ -285,6 +294,8 @@ class MainWindow(QMainWindow):
                 icon_gr,
                 icon_or,
                 "____",  # или какой-то "title"
+                self.window_width,
+                self.window_height,
                 self
             )
             self.Tb.addWidget(button)
@@ -350,8 +361,11 @@ class MainWindow(QMainWindow):
         #Возвращает список найденных моделей.
     
     
-        if base_path is None:
-            base_path = os.path.dirname(os.path.abspath(__file__))
+        try:
+            base_path = os.getcwd()#os.path.dirname(os.path.abspath(_file_))
+        except NameError:
+            base_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+            print("exception in base path=", base_path)
     
         print(base_path)
     
@@ -487,12 +501,19 @@ class MainWindow(QMainWindow):
 #Calling dark/light theme:
     def apply_theme(self, theme_file):
         try:
-            with open(theme_file, "r") as file:
+            with open(theme_file, "r",encoding="windows-1251") as file:
                 app.setStyleSheet(file.read())
                 #self.setStyleSheet(file.read())
                 print(f"Stylesheet: " + str(theme_file))
 
                 apply_matplotlib_theme(theme_file)
+
+
+                #self.left.figure.set_facecolor(rcParams['figure.facecolor'])
+                #if self.left.figure.axes:
+                    #self.left.figure.axes[0].set_facecolor(rcParams['axes.facecolor'])
+                #self.left.canvas.draw()
+
 
         except FileNotFoundError:
             print(f"Fail {theme_file} not found.")
@@ -519,6 +540,10 @@ def apply_matplotlib_theme(theme_name: str):
             'ytick.color': 'white',
             'text.color': 'white',
             'grid.color': '#444444',
+            'axes.labelsize': 30,
+            'xtick.labelsize': 28,
+            'ytick.labelsize': 28,
+            'font.size': 30
         })
     else:
         # Светлая тема
@@ -526,16 +551,25 @@ def apply_matplotlib_theme(theme_name: str):
             'axes.facecolor': 'white',
             'figure.facecolor': 'white',
             'savefig.facecolor': 'white',
-            'axes.edgecolor': 'black',
+            'axes.edgecolor':  'black',
             'axes.labelcolor': 'black',
             'xtick.color': 'black',
             'ytick.color': 'black',
             'text.color': 'black',
-            'grid.color': '#cccccc',
+            'grid.color': 'black',
+            'axes.labelsize': 30,
+            'xtick.labelsize': 28,
+            'ytick.labelsize': 28,
+            'font.size': 30
         })
 #..........................................
-
-
+#'axes.edgecolor':  'black',
+#'grid.color': '#cccccc',
+          #  'axes.labelcolor': 'black',
+           # 'xtick.color': 'black',
+            #'ytick.color': 'black',
+            #'text.color': 'black',
+             #'grid.color': '#444444',
         
 # __main____________________________
 ####################################
