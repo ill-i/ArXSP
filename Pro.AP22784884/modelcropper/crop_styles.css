@@ -1,0 +1,67 @@
+QSlider#slider {
+    background: transparent; /* Делаем фон прозрачным */
+    border: none;
+    height: 50px; /* Высота всей области слайдера (не трека!) */
+}
+
+
+    QSlider#slider::handle:horizontal {
+        width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        background: gray;
+        border: 2px solid white;
+        /*box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);*/
+    }
+
+    QSlider#slider[styleClass="green"]::handle:horizontal {
+        background: rgb(0, 200, 0);
+        border: 2px solid white;
+        /*box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);*/
+    }
+
+    QSlider#slider[styleClass="yellow"]::handle:horizontal {
+        background: rgb(200, 200, 0);
+        border: 2px solid white;
+        /*box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);*/
+    }
+
+    QSlider#slider[styleClass="orange"]::handle:horizontal {
+        background: rgb(200, 100, 0);
+        border: 2px solid white;
+        /*box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);*/
+    }
+
+    QSlider#slider[styleClass="red"]::handle:horizontal {
+        background: rgb(200, 0, 0);
+        border: 2px solid white;
+        /*box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);*/
+    }
+
+QTabWidget::pane {
+    border: 1px solid #444;
+    background: #222;
+    border-radius: 6px;
+}
+
+QTabBar::tab {
+    background: #333;
+    color: #ddd;
+    padding: 2px 8px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border: 1px solid #444;
+    margin: 2px;
+}
+
+    QTabBar::tab:selected {
+        background: #555;
+        color: white;
+        border-bottom: 2px solid #d19a66;
+    }
+
+    QTabBar::tab:hover {
+        background: #444;
+    }
+
+

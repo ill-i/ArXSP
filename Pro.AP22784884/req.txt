@@ -1,0 +1,10 @@
+PyQt5
+numpy
+Pillow
+matplotlib
+astropy
+shapely
+imutils
+opencv-python
+scipy
+pytest

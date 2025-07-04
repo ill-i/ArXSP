@@ -331,16 +331,15 @@ class ColorChangingSlider(QWidget):
 		self.update_slider_class()
 
 	def load_styles(self):
-		if hasattr(sys, '_MEIPASS'):
-			css_file = os.path.join(sys._MEIPASS, "crop_styles.css")
-		else:
-			css_file = os.path.abspath("crop_styles.css")
-		if not os.path.isfile(css_file):
-			print(f"File not found: {css_file}")
-		else:
-			with open(css_file, "r", encoding='windows-1251') as f:
-				style = f.read()
-				self.setStyleSheet(style)
+		"""Загружает стили из файла crop_styles.css"""
+		css_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "crop_styles.css")
+
+		if not os.path.exists(css_file):
+			print(f"Файл не найден: {css_file}")  # Проверка пути
+			return
+
+		with open(css_file, "r") as file:
+			self.setStyleSheet(file.read())
 
 	def update_slider_class(self):
 		current_value = self.slider.value()
