@@ -194,27 +194,50 @@ class ArxDataEditor(object):
 #			print(f"[rotate] Error occurred: {e}")
 #			return None
 
-	def rotate(self, angle=0): 
-		try: 
-			temp_data = self._arxData.get_data()
-			temp_header = self._arxData.get_header()
-
-			# Выполняем поворот без интерполяции
-			data_rotated = nd_rotate(
-				temp_data,
-				angle=angle,
-				reshape=False,			# не меняет размер, сохраняет форму
-				order=0,				  # nearest-neighbor: никакой интерполяции
-				mode='nearest'			# повторяет ближайшие значения на границе
-			)
-
-			temp_header.add_history(f"Image was rotated on {angle:.3f} deg (scipy, order=0)")
-			temp_header['DATE'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-
-			return ArxData(None, None, data_rotated, temp_header)
-		except Exception as e:
-			print(f"[rotate] Error occurred: {e}")
-			return None
+    def rotate(self, angle=0):
+        try:
+            # достаём данные и заголовок
+            temp_data   = self._arxData.get_data()
+            temp_header = self._arxData.get_header()
+    
+            # безопасно читаем BITPIX (0, если ключа нет)
+            bitpix = temp_header.get("BITPIX", 0)
+    
+            if bitpix > 0:
+                # для целочисленных картинок используем OpenCV (warpAffine)
+                # dsize = (width, height)
+                height, width = temp_data.shape
+                shape = (width, height)
+                center = (width // 2, height // 2)
+    
+                matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+                data_rotated = cv2.warpAffine(
+                    src=temp_data,
+                    M=matrix,
+                    dsize=shape
+                )
+                history_msg = f"Image was rotated on {angle:.3f} deg (OpenCV)"
+            else:
+                # для float-картинок — scipy.ndimage.rotate без интерполяции
+                data_rotated = nd_rotate(
+                    temp_data,
+                    angle=angle,
+                    reshape=False,    # сохраняем исходную форму
+                    order=0,          # nearest-neighbor
+                    mode='nearest'    # граничные пиксели повторяются
+                )
+                history_msg = f"Image was rotated on {angle:.3f} deg (scipy, order=0)"
+    
+            # обновляем историю и дату в заголовке
+            temp_header.add_history(history_msg)
+            temp_header["DATE"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    
+            # возвращаем новый объект ArxData
+            return ArxData(None, None, data_rotated, temp_header)
+    
+        except Exception as e:
+            print(f"[rotate] Error occurred: {e}")
+            return None
 		
 		
 		
