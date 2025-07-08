@@ -19,7 +19,7 @@ import re
 import random
 import string
 from datetime import datetime
-
+from scipy.ndimage import rotate as nd_rotate
 
 
 class ArxData(object):
@@ -175,25 +175,48 @@ class ArxDataEditor(object):
 
 
 #Rotation by angle:
-	def rotate(self,angle=0): 
+#	def rotate(self,angle=0): 
+#		try: 
+#			temp_data = self._arxData.get_data()
+#			temp_header =self._arxData.get_header()
+#
+#			shape = (temp_data.shape[1],temp_data .shape[0])
+#			center = (int(shape[0]/2),int(shape[1]/2))
+#			matrix = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1 ) 	
+#		
+#			data_rotated = cv2.warpAffine(src=temp_data, M=matrix, dsize=shape) 
+#		
+#			temp_header.add_history(f"Image was rotated on {angle:.1f} deg")
+#			temp_header['DATE'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+#
+#			return ArxData(None,None,data_rotated,temp_header)
+#		except Exception as e:
+#			print(f"[rotate] Error occurred: {e}")
+#			return None
+
+	def rotate(self, angle=0): 
 		try: 
 			temp_data = self._arxData.get_data()
-			temp_header =self._arxData.get_header()
+			temp_header = self._arxData.get_header()
 
-			shape = (temp_data.shape[1],temp_data .shape[0])
-			center = (int(shape[0]/2),int(shape[1]/2))
-			matrix = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1 ) 	
-		
-			data_rotated = cv2.warpAffine(src=temp_data, M=matrix, dsize=shape) 
-		
-			temp_header.add_history(f"Image was rotated on {angle:.1f} deg")
+			# Выполняем поворот без интерполяции
+			data_rotated = nd_rotate(
+				temp_data,
+				angle=angle,
+				reshape=False,			# не меняет размер, сохраняет форму
+				order=0,				  # nearest-neighbor: никакой интерполяции
+				mode='nearest'			# повторяет ближайшие значения на границе
+			)
+
+			temp_header.add_history(f"Image was rotated on {angle:.3f} deg (scipy, order=0)")
 			temp_header['DATE'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
 
-			return ArxData(None,None,data_rotated,temp_header)
+			return ArxData(None, None, data_rotated, temp_header)
 		except Exception as e:
 			print(f"[rotate] Error occurred: {e}")
 			return None
-
+		
+		
 		
 #End of Rotation.............
 
