@@ -139,7 +139,9 @@ QTextEdit#terminal_text_editor {
     color: /*forestgreen*/ white;
     background-color: #212121;
     border: none;
+    /* font-family: Courier, monospace; */
     font-family: Menlo, Monaco, Courier, monospace;
+
     font-size: 32px;
     padding: 10px;
 }
@@ -180,7 +182,9 @@ QToolButton {
 /*����� ��� ������� ������� ���������� � �����*/
 QDockWidget{
     /*font-family: "monospace";*/
-    font-family: Consolas;
+    /* font-family: Courier, monospace; */
+    font-family: Menlo, Monaco, Courier, monospace;
+
     font-size: 10pt;
     color: #283d3d; 
     border-width: 5px;

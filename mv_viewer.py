@@ -1,0 +1,359 @@
+class mp_viewer(QWidget):
+	
+	def __init__(self, parent=None):
+		super(mp_viewer, self).__init__(parent)
+		self.figure = Figure()
+		self.canvas = FigureCanvas(self.figure)
+		self.toolbar = NavigationToolbar(self.canvas, self)
+		self.panel = QWidget()
+		self.panel_layout = QVBoxLayout(self.panel)
+		self.dict_files = dict()
+		self.dict_id_xposs = dict()
+		self.all_Peaks_data = {}
+		self.all_Peaks_data_orign = {}
+		self.poly_coef = {} #полином
+		layout = QHBoxLayout()
+		layout.setContentsMargins(0, 0, 0, 0)
+		canvas_layout = QVBoxLayout()
+		canvas_layout.addWidget(self.toolbar)
+		canvas_layout.addWidget(self.canvas)
+		panel_main_layout = QVBoxLayout()
+		panel_main_layout.addStretch()
+		panel_main_layout.addWidget(self.panel)
+		panel_main_layout.addStretch()
+		layout.addLayout(canvas_layout)
+		layout.addLayout(panel_main_layout)
+		self.setLayout(layout)
+		self.numer = 1# till 0- after
+		self.mag_before_1972 = [0,0.61,1.1,1.47,1.84,2.25,2.66,3.04,0]
+		self.mag_after_1972 = [0,0.5,0.97,1.44,1.93,2.43,2.69,3.04,0]
+		self.graph_check = None
+		self.intensity = [0,1,2]
+		self.dark = [0,1,2]
+		self.poly_coeffs = None
+		self.frames_id_str = ''
+		#...........................................................
+
+    def set_all_peaks(self, all_peaks):
+        self.all_Peaks_data.clear()
+        self.all_Peaks_data_orign.clear()
+        for name, peaks in all_peaks.items():
+            self.all_Peaks_data[name] = []
+            self.all_Peaks_data_orign[name] = []
+            for i in range(len(peaks)):
+                x_val = self.mag_after_1972[i] if self.numer == 0 else self.mag_before_1972[i]
+                self.all_Peaks_data[name].append((x_val, peaks[i][1]))
+                self.all_Peaks_data_orign[name].append((x_val, peaks[i][1]))
+
+    
+	def set_date(self, numer):
+		print("numer = ", numer)
+		self.numer = numer
+		
+	def add_to_all_peaks(self, id, tuples_array):
+		if id not in self.all_Peaks_data :
+			self.all_Peaks_data[id] = []
+			self.all_Peaks_data_orign[id] = []
+			for i in range(len(tuples_array)):
+				if self.numer == 0:
+					self.all_Peaks_data[id].append((self.mag_after_1972[i],tuples_array[i][1]))
+					self.all_Peaks_data_orign[id].append((self.mag_after_1972[i],tuples_array[i][1]))
+				else:
+					self.all_Peaks_data[id].append((self.mag_before_1972[i],tuples_array[i][1]))
+					self.all_Peaks_data_orign[id].append((self.mag_after_1972[i],tuples_array[i][1]))
+			
+		else:
+			print(f"ID {id} already exists.")
+		
+	def set_dialog_parent(self, dia_parent):
+		self.dia_parent = dia_parent
+		self.dia_parent.Set_Char_ToolBar_Enabled(False)
+		
+
+	def ImgShow(self):
+		if self.graph_check:
+			self.graph_check.remove()
+		ax = self.figure.add_subplot(111)
+		self.graph_check = ax
+		ax.clear()
+		colors = ['b','g','r','c','o','m','k']
+		color = 0		
+		for id,vals in self.all_Peaks_data.items():
+			values = self.all_Peaks_data[id]#array of 
+			#[(x1,y1),(x2,y2)]
+			x = []
+			y = []
+			
+			for tup in values:
+				
+				x.append(tup[0])
+				y.append(tup[1])
+
+			ax.scatter(x,y,c=colors[color%6])
+			ax.set_xlim(-8,8)
+			color =+ 1
+		self.canvas.draw()
+
+	def Reset(self):
+		ax = self.figure.add_subplot(111)
+		ax.clear()
+		self.canvas.draw()
+
+	def closeEvent(self, event):
+		self.dia_parent.Set_Char_ToolBar_Enabled(True)
+		print("Closing mp_viewer")
+
+		event.accept()  
+		
+	def show(self):	
+		
+		lbl = QLabel('Exposition: ')
+		
+		#peak order box
+		self.Expose_box = QSpinBox()
+		self.Expose_box.setValue(1)
+		self.Expose_box.setRange(0, 1500)
+		
+		self.panel_layout.addWidget(lbl)
+		self.panel_layout.addWidget(self.Expose_box)
+		
+		#value_of_exposition = self.Expose_box.value()
+		
+		
+		for file_id, file_name in self.dict_files.items():
+			label = QLabel(file_name, self.panel)
+			self.panel_layout.addWidget(label)
+			self.frames_id_str =self.frames_id_str + " - " + str(file_id) + ";"# self.frames_id_str + f'{file_id},'
+			# Create the slider widget for the file ID
+			slider = QSlider(Qt.Horizontal, self.panel)
+			slider.setRange(-100, 100)
+			slider.setValue(0)
+
+			slider.valueChanged.connect(lambda value, id=file_id: self.slider_value_changed_by_id(id, value))
+			#.....................................
+			
+			
+			self.panel_layout.addWidget(slider)	
+			
+			self.add_to_all_peaks(file_id, peak_data)
+			
+			print("peak data from mp_viewer")
+			print(peak_data)
+			
+		btn_convert = QPushButton()
+		btn_convert.setText("Convert")
+		
+		btn_convert.clicked.connect(self.convert_button_clicked)
+		
+		self.panel_layout.addWidget(btn_convert)	
+		
+	#####################################
+		last_layout = QHBoxLayout()
+		
+		
+		self.input_box = QSpinBox()
+		self.input_box.setValue(1)
+		self.input_box.setRange(1, 20)
+		
+		btn_polynom = QPushButton()
+		btn_polynom.setText("Polynom")
+		# Connect the button to a method that handles the click event
+		btn_polynom.clicked.connect(self.handle_polynom_button_click)
+
+		btn_save_polynom = QPushButton()
+		btn_save_polynom.setText("Save")
+		
+		btn_save_polynom.clicked.connect(self.save_polynom)
+		
+		
+		last_layout.addWidget(self.input_box)
+		last_layout.addWidget(btn_polynom)
+		last_layout.addWidget(btn_save_polynom)
+		
+		self.panel_layout.addLayout(last_layout)
+	#####################################
+		
+		super(mp_viewer, self).show() 
+		self.ImgShow()
+		
+		
+	def do_polynom(self, order=6):
+	
+		y = self.intensity
+		x = self.dark
+
+		try:
+		
+			# Fit a polynomial using the numpy polynomial module
+			self.poly_coeffs = np.polynomial.polynomial.polyfit(x, y, order)
+			poly = np.polynomial.Polynomial(self.poly_coeffs)
+			
+			# Check if the polynomial is monotonic
+			x_range = np.linspace(x[0], x[-1], 100)
+			y_poly = poly(x_range)
+			is_monotonic = np.all(np.diff(y_poly) >= 0) or np.all(np.diff(y_poly) <= 0)
+
+			if not is_monotonic:
+				order += 1
+				return self.do_polynom(order)  # Recurse with a higher order
+
+			if self.graph_check:
+				self.graph_check.remove()
+			ax = self.figure.add_subplot(111)
+			self.graph_check = ax
+			ax.clear()
+			ax.set_xlim(x[0], x[-1])
+			ax.scatter(x, y, color="blue", s=5, label="Data")
+			ax.plot(x_range, y_poly, color="orange", label=f"Polynomial (order={order})")
+			ax.legend()
+			ax.set_ylabel("Intensity")
+			ax.set_xlabel("Optical density")
+			self.canvas.draw()
+		except:
+			msg_box = QMessageBox()
+			msg_box.setWindowTitle("Error!")
+			msg_box.setText("Errer occured!!!!")
+			msg_box.setIcon(QMessageBox.Information)
+			msg_box.exec_()
+
+	# Define the method that handles the button click event
+	def handle_polynom_button_click(self):
+		if self.input_box.value():
+			order = self.input_box.value()  # Use the value from the input box
+		else:
+			order = 6  # Use the default value of 6
+		self.do_polynom(order)  # Call the do_polynom function with the chosen order
+		
+		
+	def get_equation(self):
+		terms = ["{0:.4f} x^{1}".format(coef, i) for i, coef in enumerate(self.poly_coeffs)]
+		# Join terms and replace "^1" with "", "^0" with ""
+		equation = " + ".join(terms).replace(" x^0", "").replace(" x^1", " x")
+		return equation
+		
+		
+
+		def save_polynom(self):
+            name, ok = QInputDialog.getText(None, "Input", "Enter name:")
+            if not ok or not name:
+                return
+        
+            if name in self.saved_poly_coeffs:
+                QMessageBox.information(self, "Duplicate", "Name already exists.")
+                return
+        
+            self.saved_poly_coeffs[name] = {
+                "frames_id": self.frames_id_str,
+                "coeff": self.poly_coeffs,
+                "equation": self.get_equation()
+            }
+        
+            QMessageBox.information(self, "Saved", self.get_equation())
+
+
+	
+		#end message box
+	
+	def add_to_poly_coef(self, id, tuples_array):
+		if id not in self.poly_coef :
+			self.poly_coef[id] = []
+			for i in range(len(tuples_array)):
+				if self.numer == 0:
+					self.poly_coef[id].append((self.mag_after_1972[i],tuples_array[i][1]))
+					self.all_Peaks_data_orign[id].append((self.mag_after_1972[i],tuples_array[i][1]))
+					print("self.all_Peaks_data_orign[id]", self.all_Peaks_data_orign[id])
+
+		else:
+			print(f"ID {id} already exists.")
+		
+	def convert_button_clicked(self):
+		x_array = []
+		y_array = []
+		array = np.array(list(self.all_Peaks_data.values())).flatten()
+		for i in range(len(array)):
+			if i%2==0:
+				x_array.append(array[i])
+			else:
+				y_array.append(array[i])
+		print("x_array, y_array", x_array,y_array)
+		c = []
+		for i in range(1,len(y_array)):
+			c.append(abs(y_array[i] - y_array[i-1]))
+		mean_deviation = np.array(c).sum()/len(y_array)
+
+		#now we sort our data: if delta between neighboring elements larger than 2 mean deveation we will remove it
+		indexes = []
+		for i in range(1,len(y_array)):
+			if abs(y_array[i]-y_array[i-1])>mean_deviation*2:
+				indexes.append(i)
+
+		y_array = np.delete(y_array,indexes)
+		x_array = np.delete(x_array,indexes)
+		intensity = 10000/10**(x_array/2.5)
+		a = []
+		for i in range(0,len(intensity)):
+			a.append([intensity[i],y_array[i]])
+
+		a.sort(key=lambda x:x[0])
+
+		intensity = []
+		y_array = []
+
+		for i in range(0,len(a)):
+			intensity.append(a[i][0])
+			y_array.append(a[i][1])
+
+		self.intensity = np.array(intensity)
+		self.dark = np.array(y_array)	   
+		print('self.intensity',self.intensity)
+		print('self.dark',self.dark)
+		if self.graph_check:
+			self.graph_check.remove()
+		ax = self.figure.add_subplot(111)
+		self.graph_check = ax
+		ax.clear()
+		ax.plot(self.intensity, self.dark, markersize=3,marker='o' )
+		self.canvas.draw()
+		
+		
+	def slider_value_changed_by_id(self, id, value):
+	
+		delta = 0
+		value_of_exposition = self.Expose_box.value()
+		
+		if value < 0: #we will use only positive values of slider
+			sign = -1 #but at the end we should now increase or decrease value
+		else:
+			sign = 1
+		delta = 2.5 * np.log(value_of_exposition/((value_of_exposition*max(abs(value), 1))/100)) #formulae to change points position
+		#delta = abs(value) * 0.01#
+			
+		for i in range(len(self.all_Peaks_data_orign[id])):
+			#print("i = ",self.all_Peaks_data_orign[id][i][1])
+			if self.numer == 0:
+				self.all_Peaks_data[id][i] = (self.mag_after_1972[i] + delta*sign,self.all_Peaks_data_orign[id][i][1]) 
+			else:
+				self.all_Peaks_data[id][i] = (self.mag_before_1972[i] + delta*sign,self.all_Peaks_data_orign[id][i][1]) 
+			
+		#if we should decrease value sign will be negative
+	
+		
+		
+		#print("id of file which is changing: ", id)
+		#print("value of slider: ", value)
+		self.ImgShow()
+		
+	#param methods:
+	def add_file_Id_fname(self, id, fname):
+		#&&&&&&&&&&&
+
+
+		self.dict_files[id] = fname
+		
+		self.dict_id_xposs[id] = 0
+		
+		
+		
+		
+		
+	

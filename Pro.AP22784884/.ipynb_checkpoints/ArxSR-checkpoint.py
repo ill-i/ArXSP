@@ -1,3 +1,4 @@
+﻿# from configparser import SafeConfigParser
 import io
 import os
 from unittest import signals
@@ -9,7 +10,15 @@ import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
 from scipy import signal ### v1.7.1
 from scipy.signal import find_peaks
+from scipy.optimize import fsolve
+from numpy.polynomial import Polynomial
 from typing import Literal
+import csv
+import re
+import random
+import string
+from datetime import datetime
+
 
 
 class ArxData(object):
@@ -35,7 +44,7 @@ class ArxData(object):
             fitsfile = fits.open(path)
             self.__data = fitsfile[0].data
             self.__header = fitsfile[0].header
-            self.__fname = os.path.basename(path).replace(".fit","").replace(".fits","")
+            self.__fname = os.path.basename(path).replace(".fits","").replace(".fit","")
             print(self.__fname)
 
         except Exception as err:
@@ -50,6 +59,9 @@ class ArxData(object):
     def set_header(self, header):
         self.__header = header
 
+    def set_data(self,data):
+        self.__data = data
+
     def get_data(self):
         return self.__data
 
@@ -59,10 +71,22 @@ class ArxData(object):
     def get_fname(self):
         return self.__fname
 
+    def set_fname(self,fname):
+        self.__fname = fname
+
     def get_exptime(self):
         try:
             if 'EXPTIME' in self.__header:
                 return self.__header['EXPTIME']
+            else:
+                return None
+        except Exception as e:
+            return f'err: {e}'
+
+    def get_dateObs(self):
+        try:
+            if 'DATE-OBS' in self.__header:
+                return self.__header['DATE-OBS']
             else:
                 return None
         except Exception as e:
@@ -87,13 +111,14 @@ class ArxData(object):
 
 
 #Get image as cv2-normalized:
-    def get_image(self):
+    def get_image(self, colormap):
         if self.__data is None:
             print("err: No data for image!")
             return None
         else:
             norm_image = cv2.normalize(self.__data[::-1], None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-            return cv2.applyColorMap(norm_image, cv2.COLORMAP_VIRIDIS)
+            #return cv2.applyColorMap(norm_image, cv2.COLORMAP_VIRIDIS)
+            return cv2.applyColorMap(norm_image, colormap)
 #End of Get image as cv2-normalized______________________________________________________________________
 
 
@@ -231,8 +256,6 @@ class ArxDataEditor(object):
 
 #End of ArxDataEditor
 
-
-
 class ArxSpectEditor(ArxDataEditor):
 
 ## add other func
@@ -240,11 +263,18 @@ class ArxSpectEditor(ArxDataEditor):
         try:
             # Получение данных
             data = self._arxData.get_data()
+            temp_header = self._arxData.get_header()
+            print("data", data)
             if data is None:
                 print("[SDistorsionCorr] Error: нет данных.")
                 return None
             
+            ###====
             data_part = data[top:down]
+            print("data_part", data_part)
+            #print("data.shape,",data.shape)
+            #print("data_part.shape,",data_part.shape())
+
             data_columns = []
             for i in range(0,len(data_part[0])):
                     data_columns.append(list(data_part[:,i]))
@@ -278,7 +308,7 @@ class ArxSpectEditor(ArxDataEditor):
             for i in range(1,len(index1)):
                 delt1.append(abs(index1[i]-index1[i-1]))
             delt_mean1 = np.array(delt1).sum()/len(delt1)    
-    
+            
             for i in median1:
                 for j in range(i[0],i[1]):
                     if abs(i[2]-index1[j])>delt_mean1:
@@ -330,11 +360,11 @@ class ArxSpectEditor(ArxDataEditor):
                     else:
                         m = m - len(data_collumns_entire_image[i])
                         new_pic_col1[i][m] = data_collumns_entire_image[i][j]  
-    
+            
             data_rows1 = []
             for i in range(0,len(new_pic_col1[0])):
                 data_rows1.append(list(new_pic_col1[:,i]))
-    
+            
             delta_x1 = np.arange(0,len(data_rows1))*tg1
             shape1 = np.array(data_rows1).shape
             new_data_rows1 = np.zeros(shape1,dtype="uint16")
@@ -346,48 +376,61 @@ class ArxSpectEditor(ArxDataEditor):
                     else:
                         m = m - len(data_rows1[i])
                         new_data_rows1[i][m] = data_rows1[i][j] 
-    
-            aligned_image1 = new_data_rows1       
-            return aligned_image1
+                 
+            aligned_image1 = new_data_rows1 
+            
+            temp_header['DATE'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+            temp_header.add_history(f"Image was processed:s-distortion was corrected, optical density was converted to relative intensity by polinomial from calibrational frames")
+            
+
+
+            newArxDATA = ArxData(None, None, aligned_image1, temp_header)
+            return newArxDATA
+
+            #hdu = fits.PrimaryHDU(data=aligned_image1, header=temp_header)
+
+            #return fits.HDUList([hdu])
     
         except Exception as e:
-            print(f" Ошибка: {e}")
+            print(f" Error: {e}")
             return None
     
 
 
 
-    def OptDen2Int(self, root, best_poly, polynomial_extrapolate):
+    def OptDen2Int(self, poly_obj):# best_poly, polynomial_extrapolate):
         try:
             data = self._arxData.get_data()
+            temp_header = self._arxData.get_header()
+            print(f"data in OptDen2Int={data}")
+            best_poly = poly_obj.bestPoly
+            print(f"best_poly={best_poly}")
+            polynomial_extrapolate = poly_obj.extraPoly
+            print(f"polynomial_extrapolate ={polynomial_extrapolate }")
+            root = 10#poly_obj.root
+            print(f"root ={root}")
+            
             if data is None:
-                print("[OptDen2Int] Error: нет данных.")
+                print("[OptDen2Int] Error: no data.")
                 return None
 
             data_image = np.log10(65535 / np.where(data == 0, 1e-32, data)) * 1000
+            mask = data_image < root
+            #print(f"data in OptDen2Int={data_calib}")
+            data_calib = np.empty_like(data_image)
+            mask = data_image < root
+            data_calib[mask] = polynomial_extrapolate(data_image[mask])
+            data_calib[~mask] = best_poly(data_image[~mask])
 
+            temp_header.add_history(f"Optical density was converted to relative intensity")
+            temp_header['DATE'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
 
-            vectorized_best_poly = np.vectorize(best_poly)
-            vectorized_extrapolate = np.vectorize(polynomial_extrapolate)
+            print(temp_header)
 
-         
-            data_calib = np.where(
-                data_image < root,
-                vectorized_extrapolate(data_image),
-                vectorized_best_poly(data_image)
-            )
-
-            # Визуализация
-            # plt.figure(figsize=(10, 4))
-            # plt.imshow(data_calib, cmap='gray')
-            # plt.title("Calibrated Image")
-            # plt.tight_layout()
-            # plt.show()
-
-            return data_calib
+            return ArxData(None,None,data_calib,temp_header)
 
         except Exception as e:
-            print(f"[OptDen2Int] Ошибка: {e}")
+            print(f"[OptDen2Int] Error: {e}")
             return None
 
 
@@ -414,7 +457,15 @@ class ArxCollibEditor(ArxDataEditor):
         else: 
             if order > 21: order = 21
             #get mean data of optical dens:
-            data = self.get_ArxData_xy()
+            #data = self.get_ArxData_xy()
+            
+            xy = self.get_ArxData_xy()
+            x_vals = xy[:, 0]
+            y_vals = xy[:, 1]
+            data_arr = np.array(y_vals)
+            data_list = data_arr.tolist()
+            data = np.array(data_list)
+            print("data from xy", data)
             #peak indexes
             peak_x = signal.argrelextrema(data, np.greater, order=order)[0] 
             peak_y =[] 
@@ -423,12 +474,15 @@ class ArxCollibEditor(ArxDataEditor):
                     # search mean by 5 values: 
                     peak_y.append((data[i-2]+data[i-1]+data[i]+data[i+1]+data[i+2])/5) 
 
-            if len(peak_x) !=9 and len(peak_y)!=9:
-                print("Wrong data to find peaks")
-                return None
+            #if len(peak_x) !=9 and len(peak_y)!=9:
+                #print("Wrong data to find peaks")
+               # return None
 
             #x and y values of peaks: 
             return peak_x, peak_y
+
+ 
+
 #End of Find peaks____________________________________________________________________
 
     @staticmethod
@@ -455,36 +509,38 @@ class ArxCollibEditor(ArxDataEditor):
 
         return attenuator + delta*sign
 
-    
-
-
-
-
-
-
-
-
 
 #Find peaks automatically:
     def get_peaks_auto(self):
+       
+        xy = self.get_ArxData_xy()
+        x_vals = xy[:, 0]
+        y_vals = xy[:, 1]
         
-        data = self.get_ArxData_xy()
-
-        data_smoothed, peak_x = self.__auto_calculate_peaks(data)
+        data_smoothed, peak_x = self.__auto_calculate_peaks(y_vals)
+        
         values = data_smoothed[peak_x][1:8]
         changes = [y - x for x, y in zip(values, values[1:])]
         increasing = sum(change > 0 for change in changes)
         decreasing = sum(change < 0 for change in changes)
     
         if increasing > decreasing:
-            data_smoothed, peak_x = self.__auto_calculate_peaks(data[::-1])
+            data_smoothed, peak_x = self.__auto_calculate_peaks(data_smoothed[::-1])
         elif decreasing > increasing:
             pass
         else:
             print("err: Cannot understand calibration peaks values")
 
         peak_y = data_smoothed[peak_x]
+
+        #if len(peak_x) ==9:
+        #    peak_x = peak_x[:-1]
+        #if len(peak_y)!=9:
+        #    peak_y = peak_y[:-1]
+
         return peak_x, peak_y
+
+ 
 #End of Find peaks automatically_________________________________________
 
 
@@ -540,30 +596,585 @@ class ArxCollibEditor(ArxDataEditor):
         return data_smoothed, peak_indx
 #End of Privates________________________________________________________________________________________________________
 
+    @staticmethod
+    def clean_peaks_convert_flux(x_array, y_array):
+
+        c = []
+        for i in range(1, len(y_array)):
+            c.append(abs(y_array[i] - y_array[i - 1]))
+        mean_deviation = np.array(c).sum() / len(y_array)
+        
+        indexes = []
+        for i in range(1, len(y_array)):
+            if abs(y_array[i] - y_array[i - 1]) > mean_deviation * 2:
+                indexes.append(i)
+
+        y_array = np.delete(y_array, indexes)
+        x_array = np.delete(x_array, indexes)
+        
+        x_flux = 10000 / 10 ** (x_array / 2.5)
+        
+        paired = sorted(zip(x_flux, y_array), key=lambda p: p[0])
+        x_flux_sorted, y_sorted = zip(*paired)
+        
+        x_flux_sorted = np.array(x_flux_sorted)
+        y_sorted = np.array(y_sorted)
+        print('x_flux_sorted:',x_flux_sorted)
+        print('y_sorted:',y_sorted)
+
+        return x_flux_sorted, y_sorted
+
+#    def poly_mse_new(self, x, y):
+#        MAX_DEGREE = 15
+#        candidates = []
+#        sorted_indices = np.argsort(x)
+#        x_sorted = x[sorted_indices]
+#        y_sorted = y[sorted_indices]
+#
+#        for order_mse in range(1, MAX_DEGREE + 1):
+#            mse, poly = self.get_poly_mse(x_sorted, y_sorted, order_mse)
+#            y_pred = poly(x_sorted)
+#
+#            if self.is_strictly_monotonic(y_pred):
+#                smoothness = self.is_smooth(poly, x_sorted)
+#                candidates.append((order_mse, poly, smoothness))
+#
+#        
+#
+#        if candidates:
+#            sorted_candidates = sorted(candidates, key=lambda x: x[2])
+#            median_candidate = sorted_candidates[len(sorted_candidates) // 2]
+#            best_poly = median_candidate[1]
+#                    
+#         #    print(f"Best degree: {median_candidate[0]}, MSE: {mse}")
+#
+#       else:
+#           best_poly = None
+#       #    
+#           return None, None, None
+#
+#       if best_poly is not None:
+#            x_test = np.linspace(min(x_sorted), max(x_sorted),500)
+#       else:
+#           print("No suitable monotonous polynomial was found.")
+#
+#
+#          
+#       def poly_function(z):
+#           return sum(c * z**i for i, c in enumerate(best_poly.coeff[::-1]))
+#
+#       root = fsolve(poly_function, 1)[0]
+#       
+#       x_points = [0, x_test[0]]
+#       y_points = [0, best_poly(x[0])]
+#
+#       extrapolation_poly = Polynomial.fit(x_points, y_points, 20).convert()
+#       extrapolation_coefficients = extrapolation_poly.coef
+#       def polynomial_extrapolate(x):
+#           return sum(c * x**i for i, c in enumerate(extrapolation_coefficients))
+#   
+#     #  x_extrapolate = np.linspace(0, x_test[0], 100)
+#     #  y_extrapolate = extrapolation_poly(x_extrapolate)
+#
+#     #  x_full = np.concatenate([x_extrapolate, x_test])
+#      #  y_full = np.concatenate([y_extrapolate, best_poly(x_test)])
+#
+#
+#        return best_poly, polynomial_extrapolate,  root
+#
+#
+#    def get_poly_mse(self, x, y, degree):
+#    #    pass
+#        coeffs = np.polyfit(x, y, degree)
+#        poly = np.poly1d(coeffs)
+#        y_pred = poly(x)
+#        mse = ((y - y_pred) ** 2).mean()
+#        return mse, poly
+#
+#    def is_smooth(self, poly, x):
+#     #   pass
+#        derivative = poly.deriv()
+#        derivative_values = derivative(x)
+#        return np.std(derivative_values)
+#
+#    def is_strictly_monotonic(self, y_vals):
+#    #    pass
+#        diff = np.diff(y_vals)
+#        return np.all(diff > 0) or np.all(diff < 0)
+
+    @staticmethod
+    def is_smooth(poly, x):
+        derivative_coeffs = np.polyder(poly)   # вернет np.poly1d
+        derivative_values = derivative_coeffs(x)
+        smoothness = np.std(derivative_values)
+        return smoothness
+
+
+
+
+    @staticmethod
+    def get_poly_mse(x, y, degree):
+        coeffs = np.polyfit(x, y, degree)
+       # print('coef')
+        poly = np.poly1d(coeffs)
+        print("poly",poly)
+        y_pred = poly(x)
+        mse = ((y - y_pred) ** 2).mean()
+        return mse, poly
+
+
+
+    @staticmethod
+    def is_strictly_monotonic(y_vals):
+        diff = np.diff(y_vals)
+        print('diff', diff)
+        return np.all(diff > 0) #or np.all(diff < 0)
+
+    @staticmethod
+    def poly_eval(poly, x):
+        """Безопасная функция для вычисления значений полинома."""
+        if poly is None:
+            raise ValueError("poly is None")
+        return sum(c * x**i for i, c in enumerate(poly.coef[::-1]))
+    
+    @staticmethod
+    def polynomial_extrapolate(coeffs, x):
+        """Экстраполяция по коэффициентам"""
+        return sum(c * x**i for i, c in enumerate(coeffs))
+    
+    # @staticmethod
+    # def poly_mse_new(x, y):
+    #     MAX_DEGREE = 15
+    #     candidates = [] 
+    #     sorted_indices = np.argsort(x)
+    #     x_sorted_1 = x[sorted_indices]
+    #     y_sorted_1 = y[sorted_indices]
+    
+    #     # Отбрасываем последнюю точку (по твоей логике)
+    #     x_sorted = x_sorted_1#[:-1]
+    #     y_sorted = y_sorted_1#[:-1]
+    
+    #     for order_mse in range(1, MAX_DEGREE + 1):
+    #         try:
+    #             mse, poly = ArxCollibEditor.get_poly_mse(x_sorted, y_sorted, order_mse)
+    #             y_pred = poly(x_sorted)
+    
+    #             if ArxCollibEditor.is_strictly_monotonic(y_pred):
+    #                 smoothness = ArxCollibEditor.is_smooth(poly, x_sorted)
+    #                 candidates.append((order_mse, poly, smoothness))
+    
+    #         except Exception as e:
+    #             print(f"Ошибка на степени {order_mse}: {e}")
+    
+    #     if candidates:
+    #         sorted_candidates = sorted(candidates, key=lambda x: x[2])
+    #         median_candidate = sorted_candidates[len(sorted_candidates) // 2]
+    #         best_poly = median_candidate[1]
+    #         print(f"Best degree: {median_candidate[0]}")
+    #     else:
+    #         best_poly = None
+    #         print("best_poly = None.")
+    #         return None, None, None
+    
+    #     # Вычисление корня
+    #     def poly_eval(x):
+    #         return sum(c * x**i for i, c in enumerate(best_poly.coeffs[::-1]))
+    
+    #     root = fsolve(poly_eval, 1)[0]
+    
+    #     # Экстраполяция
+    #     x_test = np.linspace(min(x_sorted), max(x_sorted), 500)
+    #     x_points = [0, x_test[0]]
+    #     y_points = [0, best_poly(x_test)[0]]
+    
+    #     extrapolation_poly = Polynomial.fit(x_points, y_points, 20).convert()
+    
+    #     def polynomial_extrapolate(x):
+    #         return extrapolation_poly(x)
+    
+    #     return best_poly, polynomial_extrapolate, root
+
+
+    @staticmethod
+    def poly_mse_new(x,y):
+        MAX_DEGREE = 15
+        candidates = [] 
+        sorted_indices = np.argsort(x)
+        x_sorted_1 = x[sorted_indices]
+        y_sorted_1 = y[sorted_indices]
+        x_sorted = x_sorted_1#[:-1]
+        y_sorted = y_sorted_1#[:-1]
+        print("check x_sorted",x_sorted)
+        print("check y_sorted",y_sorted)
+
+        print("check poly_mse_new")
+
+        x_test = np.linspace(min(x_sorted), max(x_sorted), 500)
+    
+        for order_mse in range(1, MAX_DEGREE + 1):
+            try:
+                mse, poly = ArxCollibEditor.get_poly_mse(x_sorted, y_sorted, order_mse)
+                y_pred = poly(x_test)
+    
+                if ArxCollibEditor.is_strictly_monotonic(y_pred):
+                    smoothness = ArxCollibEditor.is_smooth(poly, x_sorted)
+                    candidates.append((order_mse, poly, smoothness))
+    
+            except Exception as e:
+                print(f"Ошибка на степени {order_mse}: {e}")
+
+
+        if candidates:
+            sorted_candidates = sorted(candidates, key=lambda x: x[2])
+            median_candidate = sorted_candidates[len(sorted_candidates) // 2]
+            best_poly = median_candidate[1]
+            print("median_candidate[1]:", median_candidate[1])
+            # plt.figure(dpi=150)
+            # desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+            # filepath = os.path.join(desktop, "POLY_CHECK.png")
+            # plt.scatter(x_sorted,y_sorted,c="blue")
+            # plt.plot(x_sorted,besну рассt_poly(x_sorted),color="orange")
+            # print(os.getcwd())
+            # plt.savefig("POLY_CHECK.png")
+            #plt.savefig(filepath)
+            print(f"Best degree: {median_candidate[0]}, MSE: {mse}")
+        else:
+            best_poly = None
+            print("best_poly = None.")
+            # return None, None, None
+
+        # Вспомогательные данные
+        x_test = np.linspace(min(x_sorted), max(x_sorted), 500)
+
+        # Вычисление корня
+        root = fsolve(lambda x: ArxCollibEditor.poly_eval(best_poly, x), 1)[0]
+
+        # Построение полинома экстраполяции
+        x_points = [0, x_test[0]]
+        y_points = [0, best_poly(x_test)[0]]
+        extrapolation_poly = Polynomial.fit(x_points, y_points, 20).convert()
+        extrapolation_coefficients = extrapolation_poly.coef
+
+        # Возвращаем всё нужное
+        return best_poly, extrapolation_coefficients, root
+    # #
+    #    if candidates:
+    #        sorted_candidates = sorted(candidates, key=lambda x: x[2])
+    #        median_candidate = sorted_candidates[len(sorted_candidates) // 2]
+    #        best_poly = median_candidate[1]
+    #    else: 
+    #        best_poly = None
+    #        print("best_poly = None.")
+    #    
+    #    if best_poly is not None:
+    #        print(f"Best degree: {median_candidate[0]}, MSE: {mse}")
+    #        x_test = np.linspace(min(x_sorted), max(x_sorted), 500)
+    #    else:
+    #        print("No suitable monotonous polynomial was found.") 
+    #
+    #
+    #    def poly_function(x):
+    #        return sum(c * x**i for i, c in enumerate(best_poly.coef[::-1]))
+    #
+    #  # Используем fsolve для нахождения корня полинома, начиная с близкого к нулю значения (например, 1)
+    #    root = fsolve(poly_function, 1)[0]
+    #
+    #  #extrapolation
+    #    x_points = [0, x_test[0]]
+    #    y_points = [0, best_poly(x_test)[0]]
+    #
+    #    extrapolation_poly = Polynomial.fit(x_points, y_points, 8).convert()
+    #    extrapolation_coefficients = extrapolation_poly.coef
+    #
+    #    def polynomial_extrapolate(x):
+    #        return sum(c * x**i for i, c in enumerate(extrapolation_coefficients))
+    #
+    #
+    #    return best_poly,polynomial_extrapolate,root
+
+ #  def poly_mse_new(self,x,y):
+ #  
+ #      MAX_DEGREE = 8
+ #      candidates = [] 
+ #      sorted_indices = np.argsort(x)
+ #      x_sorted = x[sorted_indices]
+ #      y_sorted = y[sorted_indices]
+ #      print("check poly_mse_new")
+ #
+##       for order_mse in range(1, MAX_DEGREE + 1):
+##      try:
+##          mse, poly = self.get_poly_mse(x_sorted, y_sorted, 1)
+##          print("work")
+##      except Exception as e:
+##          print("Ошибка при get_poly_mse:", e)
+##            #  y_pred = poly(x_sorted)
+##          #print("after loop")
+ #
+ #      return
+
+#            if self.is_strictly_monotonic(y_pred):
+#                smoothness = self.is_smooth(poly, x_sorted)
+#                candidates.append((order_mse, poly, smoothness))
+#
+#        
+#
+#        if candidates:
+#            sorted_candidates = sorted(candidates, key=lambda x: x[2])
+#            median_candidate = sorted_candidates[len(sorted_candidates) // 2]
+#            best_poly = median_candidate[1]
+
+    
+
+
+
+
+
+#          if self.is_strictly_monotonic(y_pred):
+#              smoothness = self.is_smooth(poly, x_sorted)
+#              candidates.append((order_mse, poly, smoothness))
+#
+#      if candidates:
+#          sorted_candidates = sorted(candidates, key=lambda x: x[2])
+#          median_candidate = sorted_candidates[len(sorted_candidates) // 2]
+#          best_poly = median_candidate[1]
+#      else:
+#          best_poly = None
+#
+#
+#      if best_poly is not None:
+#          print(f"Best degree: {median_candidate[0]}, MSE: {mse}")
+#          x_test = np.linspace(min(x_sorted), max(x_sorted), 500)
+#     
+#      else:
+#          print("No suitable monotonous polynomial was found.") 
+#
+ #       pass
+        
+   
+#       def poly_function(x):
+#           return sum(c * x**i for i, c in enumerate(best_poly.coef[::-1]))
+#
+#       # Используем fsolve для нахождения корня полинома, начиная с близкого к нулю значения (например, 1)
+#       root = fsolve(poly_function, 1)[0]
+#   
+#       #extrapolation
+#       x_points = [0, x_test[0]]
+#       y_points = [0, best_poly(x_test)[0]]
+#   
+#       extrapolation_poly = Polynomial.fit(x_points, y_points, 8).convert()
+#       extrapolation_coefficients = extrapolation_poly.coef
+#   
+#       def polynomial_extrapolate(x):
+#           return sum(c * x**i for i, c in enumerate(extrapolation_coefficients))
+#   
+#
+#       return best_poly,polynomial_extrapolate,root
+
+
+
 #End of ArxCollibEditor
 
+class PeaksItem(object):
+
+#Initializer:
+    def __init__(self, peaks, date,expTime):
+        self.__date = date
+        self.__expTime =expTime
+        self.__peaks = peaks
+
+    def get_peaks(self):
+        return self.__peaks
+
+    def get_date(self):
+        return self.__date
+
+    def get_expTime(self):
+        return self.__expTime
+     
+###########################################
 
 
 
 
+class CsvPolynom(object):
+    
+#Initializer:
+    def __init__(self, date, bestPoly, extraPoly, root, Id = None, note = None):
 
+        self.Id = Id 
+        self.note = note
+        self.root = root
 
+        if CsvPolynom.isValidDate(date):
+            self.date = date
+        else: raise ValueError("Wrong Date format!")
 
-
-
-
-
-
-
-#Add Later:
-####################################################################################################################
-#data = self.__arxData.get_data()
-
-#        shape = (data.shape[1],data.shape[0])
-#        #print(shape)
-#        center = (int(shape[0]/2),int(shape[1]/2))
-#        matrix = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1 )
-#        data_rotated = cv2.warpAffine(src=data, M=matrix, dsize=shape) 
+        if not isinstance(bestPoly, np.poly1d):
+            raise TypeError("bestPoly should be an object of numpy.poly1d")
+        if not isinstance(extraPoly, np.poly1d):
+            raise TypeError("extraPoly should be an object of numpy.poly1d")
         
-#        return ArxData(None,f"rot_{angle}_{self.__arxData.get_fname()}", data_rotated, self.__arxData.get_header())
-####################################################################################################################
+        if bestPoly.order < 0 or np.allclose(bestPoly.coeffs, 0):
+            raise ValueError("bestPoly should not be an empty")
+        if extraPoly.order < 0 or np.allclose(extraPoly.coeffs, 0):
+            raise ValueError("extraPoly should not be an empty")
+
+        self.bestPoly = bestPoly
+        self.extraPoly = extraPoly
+#...........................................................................
+
+
+#To String:
+    def __str__(self):
+        return (f"CsvPolynom(date={self.date}, "
+                f"bestPoly={self.bestPoly}, "
+                f"extraPoly={self.extraPoly}, "
+                f"root='{self.root}', "
+                f"Id={self.Id}, "
+                f"note='{self.note}')")
+
+
+
+#Validation date format:
+    @staticmethod
+    def isValidDate(date_str):
+        try:
+            datetime.strptime(date_str, "%d.%m.%Y")
+            return True
+        except ValueError:
+            return False
+#..................................................
+
+#Generate id to write on file:
+    def generate_id(self, csv_path=None):
+
+        existing_ids = set()
+        csv_path = csv_path or "calibration_polynomial.csv"
+        
+        if os.path.isfile(csv_path):
+            with open(csv_path, mode='r', newline='') as file:
+                reader = csv.DictReader(file)
+                existing_ids = {row["id"] for row in reader if "id" in row}
+                
+        while True:
+            new_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            if new_id not in existing_ids:
+                return new_id
+#.........................................................................................
+
+#Save polynom in the file
+    def save(self, csv_path=None):
+        csv_path = csv_path or "calibration_polynomial.csv"
+
+        self.Id = self.generate_id(csv_path)
+
+        row = [
+            self.Id,
+            self.date,
+            ";".join(map(str, self.bestPoly.coeffs)),
+            ";".join(map(str, self.extraPoly.coeffs)),
+            str(self.root),
+            self.note
+        ]
+
+        file_exists = os.path.isfile(csv_path)
+        with open(csv_path, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            if not file_exists:
+                writer.writerow(["id", "date_obs", "best_poly", "extra_poly", "root", "note"])
+            writer.writerow(row)
+#End of Save..................................................................................
+    
+
+#Upload the csv polynom:
+    @staticmethod
+    def upLoadCsv(path):
+        path = path or "calibration_polynomial.csv"
+        polynoms = []
+        if not os.path.isfile(path):
+            print(f"File {path} not found.")
+            return polynoms
+
+        with open(path, mode='r', newline='') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                try:
+                    best_coeffs = list(map(float, row["best_poly"].split(";")))
+                    extra_coeffs = list(map(float, row["extra_poly"].split(";")))
+                    best_poly = np.poly1d(best_coeffs)
+                    extra_poly = np.poly1d(extra_coeffs)
+
+                    poly = CsvPolynom(
+                        date=row["date_obs"],
+                        bestPoly=best_poly,
+                        extraPoly=extra_poly,
+                        root=float(row["root"]) if row["root"] else None,
+                        Id=row["id"],
+                        note=row.get("note")
+                    )
+                    polynoms.append(poly)
+                except Exception as e:
+                    print(f"Error during reading row: {row}\n{e}")
+        return polynoms
+
+    @staticmethod
+    def findNearestDate(poly_list, target_date_str):
+        def parse_date(s):
+            for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d-%m-%Y"):
+                try:
+                    return datetime.strptime(s.strip(), fmt)
+                except ValueError:
+                    continue
+            return None
+
+        def get_date_range(date_str):
+            # Попробуем сразу распарсить как одну дату
+            d = parse_date(date_str)
+            if d:
+                return (d, d)
+
+            # Иначе — пробуем парсить как диапазон
+            parts = re.split(r'\s*[-–]\s*', date_str.strip())
+
+            if len(parts) == 2:
+                try:
+                    p1, p2 = parts[0].strip(), parts[1].strip()
+                    if '.' not in p1 and '.' in p2:  # 25-27.05.2023
+                        day1 = int(p1)
+                        day2, month, year = map(int, p2.split('.'))
+                        d1 = datetime(year, month, day1)
+                        d2 = datetime(year, month, day2)
+                    elif p1.count('.') == 1 and '.' in p2:  # 25.04-27.05.2023
+                        year = int(p2.split('.')[-1])
+                        d1 = parse_date(p1 + f".{year}")
+                        d2 = parse_date(p2)
+                    else:  # full formats: dd.mm.yyyy - dd.mm.yyyy or yyyy-mm-dd - yyyy-mm-dd
+                        d1 = parse_date(p1)
+                        d2 = parse_date(p2)
+                    return (d1, d2) if d1 and d2 else None
+                except Exception:
+                    return None
+
+            return None
+
+        date_range = get_date_range(target_date_str)
+        if not date_range:
+            raise ValueError("Wrong date format. Allowed: dd.mm.yyyy, dd-dd.mm.yyyy, dd.mm-dd.mm.yyyy, dd.mm.yyyy-dd.mm.yyyy, yyyy-mm-dd, yyyy-mm-dd - yyyy-mm-dd")
+
+        start_date, end_date = date_range
+
+        def date_distance(poly):
+            poly_date = parse_date(poly.date)
+            if not poly_date:
+                return float('inf')  # если не удалось распознать дату
+            if start_date <= poly_date <= end_date:
+                return 0
+            return min(abs((poly_date - start_date).days), abs((poly_date - end_date).days))
+
+        return min(poly_list, key=date_distance) if poly_list else None
+#End of Upload csv...........................................................
+
+
+#End of Csv Polynom___________________________________________________________________________
+
+

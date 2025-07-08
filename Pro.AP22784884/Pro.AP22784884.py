@@ -98,8 +98,8 @@ class MainWindow(QMainWindow):
         self.terminal.setMinimumHeight(100) ###
         self.terminal.hide() ##################
         # Redirect print() to the terminal:
-        sys.stdout = self.terminal ############
-        sys.stderr = self.terminal ############
+        # sys.stdout = self.terminal ############
+        # sys.stderr = self.terminal ############
         #######################################
 
     #Splitter creates as a widget which will be added into layout:
@@ -490,18 +490,15 @@ class MainWindow(QMainWindow):
 #................................................
 
 #Calling dark/light theme:
-    def apply_theme(self, theme_file):
-        try:
-            with open(theme_file, "r", encoding="cp1251") as file:
-                app.setStyleSheet(file.read())
-                #self.setStyleSheet(file.read())
-                print(f"Stylesheet: " + str(theme_file))
-
-                apply_matplotlib_theme(theme_file)
-
-        except FileNotFoundError:
-            print(f"Fail {theme_file} not found.")
-#.................................................
+def apply_theme(self, theme_file):
+    try:
+        with open(theme_file, "r", encoding="cp1251") as file:
+            self.setStyleSheet(file.read())
+            print(f"Stylesheet: " + str(theme_file))
+            # apply_matplotlib_theme(theme_file)
+    except FileNotFoundError:
+        print(f"Fail {theme_file} not found.")
+#........................................
 
     def Qprint(self, message):
         print("FROM modules...")
@@ -545,13 +542,12 @@ def apply_matplotlib_theme(theme_name: str):
 # __main____________________________
 ####################################
 if __name__ == "__main__":
-
-
-    #####CONFIG#####################
-    app = QApplication(sys.argv)####
-
-    #####RUN MAIN WINDOW############
-    win = MainWindow()##############
-    win.show()######################
-    sys.exit(app.exec_())###########
+    print("=== Start program ===")
+    app = QApplication(sys.argv)
+    print("=== QApplication created ===")
+    win = MainWindow()
+    print("=== MainWindow created ===")
+    win.show()
+    print("=== MainWindow shown ===")
+    sys.exit(app.exec_())
 

@@ -452,7 +452,7 @@ def get_poly_mse(x, y, degree):
 
 def is_strictly_monotonic(y_vals):
     diff = np.diff(y_vals)
-    return np.all(diff > 0)
+    return np.all(diff > 0) or np.all(diff < 0)
 
 
 #weight approx
