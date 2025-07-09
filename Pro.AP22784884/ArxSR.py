@@ -175,25 +175,6 @@ class ArxDataEditor(object):
 
 
 #Rotation by angle:
-#	def rotate(self,angle=0): 
-#		try: 
-#			temp_data = self._arxData.get_data()
-#			temp_header =self._arxData.get_header()
-#
-#			shape = (temp_data.shape[1],temp_data .shape[0])
-#			center = (int(shape[0]/2),int(shape[1]/2))
-#			matrix = cv2.getRotationMatrix2D(center=center, angle=angle, scale=1 ) 	
-#		
-#			data_rotated = cv2.warpAffine(src=temp_data, M=matrix, dsize=shape) 
-#		
-#			temp_header.add_history(f"Image was rotated on {angle:.1f} deg")
-#			temp_header['DATE'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
-#
-#			return ArxData(None,None,data_rotated,temp_header)
-#		except Exception as e:
-#			print(f"[rotate] Error occurred: {e}")
-#			return None
-
 	def rotate(self, angle=0):
 		try:
 			# достаём данные и заголовок
@@ -573,13 +554,14 @@ class ArxCollibEditor(ArxDataEditor):
 	
 		if increasing > decreasing:
 			data_smoothed, peak_x = self.__auto_calculate_peaks(data_smoothed[::-1])
+			y_vals = y_vals[::-1]
 		elif decreasing > increasing:
 			pass
 		else:
 			print("err: Cannot understand calibration peaks values")
 
 		peak_y = data_smoothed[peak_x]
-		xy = np.column_stack((x_vals, y_vals[::-1]))
+		xy = np.column_stack((x_vals, y_vals))
 		return xy, peak_x, peak_y
 
  

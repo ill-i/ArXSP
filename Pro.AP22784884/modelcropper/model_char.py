@@ -8,8 +8,7 @@ from PyQt5.QtGui import* ##################
 from PyQt5.QtGui import QResizeEvent ######
 from PyQt5.QtGui import QIcon, QPixmap ####
 from PyQt5.QtCore import QSize ############
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
-from PyQt5.QtCore	import QStandardPaths
+
 #OTHERS____________________________________
 from pathlib import Path ##################
 from PIL import Image #####################
@@ -59,7 +58,7 @@ class model_char(object):
 #Initializer:
 	def __init__(self,parent=None):
 		super().__init__()
-		
+        
 	#QMainWindow as parent:
 		self.main_parent = parent
 
@@ -129,63 +128,51 @@ class model_char(object):
 		#If user canceled dialog:
 			if not self.fileName:
 				print("Err: fits file has not been choosen")
-			try:
-				self.arx_data = ArxData(self.fileName)
-			#save data from file as data:
-				self.data = self.arx_data.get_data() ########
-				self.data_header = self.arx_data.get_header()
+			else:    
+				try:
+					self.arx_data = ArxData(self.fileName)
+                #save data from file as data:
+					self.data = self.arx_data.get_data() ########
+					self.data_header = self.arx_data.get_header()
 
-				self.data_editor = ArxDataEditor(self.arx_data)
-				#############################################
-				print(f"data header: {self.data_header}")
-				print(f"fits data: {self.data}")
-			except Exception as err:
-				print(f"err in reading {self.fileName}")
-				return
-			
-			#set data into QDataTable:
-			self.__right.setData(ArxDataEditor(self.arx_data).get_ArxData_xy())
+					self.data_editor = ArxDataEditor(self.arx_data)
+					#############################################
+					print(f"data header: {self.data_header}")
+					print(f"fits data: {self.data}")
+				except Exception as err:
+					print(f"err in reading {self.fileName}")
+					return
+
+                #set data into QDataTable:
+				self.__right.setData(ArxDataEditor(self.arx_data).get_ArxData_xy())
 
 		except Exception as err:
 			print(f"Unexpected {err=}, {type(err)=}")
 			return
 #...............................................................................
-	
+
 #PLot data figure:
-	def plotData(self,xy=None, *args):
-		print("------------", xy)
-		if xy is None:
-			if self.data_editor is None:
-				self.msg.setText("No data loaded to plot.")
-				self.msg.exec_()
-				return
-			xy = self.data_editor.get_ArxData_xy()
-
-		# 2) Now xy is guaranteed to be an array
-		self.__left.dataPlot(xy)
+	def plotData(self):
+		self.__left.dataPlot(self.data_editor.get_ArxData_xy())
 #..............................................................
-
-	def update_data(self, new_arx_data):
-		self.arx_data = new_arx_data
-		self.data = new_arx_data.get_data()
-		self.data_header = new_arx_data.get_header()
-		self.data_editor = ArxDataEditor(new_arx_data)
-		self.plotData()
-
 
 	def setPolynom(self, polynom):
 		self.polynom = polynom
 		self.__right.watch_button.setEnabled(True)
 		self.__right.save_button.setEnabled(True)
 
-	def savePolynomAsCsv(self, file_path: str):
-		if not self.polynom:
-			raise RuntimeError("Polynomial is not given")
-		self.polynom.savePoly(file_path)
+	def savePolynomAsCsv(self):
+
+		if self.polynom is not None:
+			try:
+				self.polynom.savePoly(None)
+			except Exception as err:
+				print("Saving is aborted!!!!")
+
 #.............................................
 
 
-#PLot Peak figure: #FINDME
+#PLot Peak figure:
 	def plotPeak(self):
 		if self.arx_data is None:
 			self.msg.setText("No Data to plot Peaks!!!")
@@ -198,13 +185,12 @@ class model_char(object):
 				#get value from spinBox to use as order:
 					order = self.__right.peak_order_spinbox.value()
 				# HERE CODE BREAKS:*************************************************
-					xy, peak_x, peak_y = ArxCollibEditor(self.arx_data).get_peaks(order)
+					peak_x, peak_y = ArxCollibEditor(self.arx_data).get_peaks(order)
 				# ******************************************************************
 				else:
 				#if checkBox is trigged then use None as order:
-					xy, peak_x, peak_y = ArxCollibEditor(self.arx_data).get_peaks( None)
-				self.clearPlotData()
-				self.plotData(xy)
+					peak_x, peak_y = ArxCollibEditor(self.arx_data).get_peaks( None)
+
 			#convert peaks & set to peakTable in right:
 				peaks_plot = np.column_stack((peak_x, peak_y))# FINDME
 				peaks = np.column_stack((peak_x[:-1], peak_y[:-1]))# FINDME
@@ -215,7 +201,7 @@ class model_char(object):
 				self.__left.peakPlot(peaks_plot)
 			#............................
 			except Exception as err:
-				print("Error in plotPeak():", err)
+				print(err)
 #...................................................................................
 
 #Clear plot data:
@@ -295,7 +281,7 @@ class model_char(object):
 			try:
 				t = Time(self.date, format='fits')
 				print(f"Date is: {t.iso}")
-		
+        
 				t_1972 = Time('1972-01-01T00:00:00.000', format='fits')
 
 				if t < t_1972:
@@ -363,7 +349,7 @@ class Left(QWidget):
 
 #Clear canvas
 	def Clear(self):
-		self.figure.clf()		  
+		self.figure.clf()          
 		self.canvas.draw() 
 		self.peaks_plot = None 
 		#self.canvas.draw_idle()
@@ -388,8 +374,8 @@ class Left(QWidget):
 	def peakPlot(self,peaks):
 		#Не работает!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		import numpy as np
-		peaks = np.asarray(peaks, dtype=float)	  # гарантируем float
-		if peaks.size == 0:						 # нечего рисовать
+		peaks = np.asarray(peaks, dtype=float)      # гарантируем float
+		if peaks.size == 0:                         # нечего рисовать
 			print("peakPlot: empty array.")
 			return
 
@@ -406,20 +392,20 @@ class Left(QWidget):
 			
 		# 3. Рисуем новые маркеры
 		self.peaks_plot = ax.scatter(
-			peaks[:, 0],		  # X
-			peaks[:, 1],		  # Y
-			s=60,				 # размер маркера; сделайте больше, если не видно
-			c="red",			  # цвет
-			marker="o",
-			linewidths=0.8,
-			edgecolors="black",
-			zorder=5,
-			label="Peaks"
+		    peaks[:, 0],          # X
+		    peaks[:, 1],          # Y
+		    s=60,                 # размер маркера; сделайте больше, если не видно
+		    c="red",              # цвет
+		    marker="o",
+		    linewidths=0.8,
+		    edgecolors="black",
+		    zorder=5,
+		    label="Peaks"
 		)
 
 		# 4. Освежаем масштаб осей (чтобы точки точно попали в кадр)
-		ax.relim()			   # пересчитать лимиты по данным
-		ax.autoscale_view()	  # применить лимиты
+		ax.relim()               # пересчитать лимиты по данным
+		ax.autoscale_view()      # применить лимиты
 
 		# 5. Перерисовываем только когда Qt сочтёт нужным
 		self.canvas.draw()
@@ -460,30 +446,31 @@ class Right(QVBoxLayout):
 
 	def InitUi(self):
 
-	#	%%%%%%%%%%%%%	 BROWSING	 %%%%%%%%%%%%%%%%%%%%%%%%:	
-	#	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	#    %%%%%%%%%%%%%     BROWSING     %%%%%%%%%%%%%%%%%%%%%%%%:	
+	#    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	#This is label to set Layout with widgets (text & btn):
 		browse_label = QLabel() ################################
+		browse_label.setAlignment(Qt.AlignTop)
 		browse_label.setAlignment(Qt.AlignCenter) ##############
 		#перенос текста ########################################
 		browse_label.setWordWrap(True) #########################
 		browse_label.setObjectName("cropper_right_browse_label") 
 	#Size of dark label ########################################
-		browse_label.setFixedSize(int(self.w/5), int(self.h/13)) #######
+		browse_label.setFixedSize(int(self.w/5), int(self.h/12)) #######
 		########################################################
 
 	#Mian Big Text on the Label:
 		browse_text = """
-			<p style="text-align: justify;"><b>
+            <p style="text-align: justify;"><b>
 			Upload fits format file</b></p>
-			"""
+            """
 		browse_text_label = QLabel(browse_text, browse_label)
 		#####################################################
 
 	#Layout to hold Main Big text and button:
 		layout = QVBoxLayout() ##############
-		layout.setSpacing(7) ################
+		layout.setSpacing(1) ################
 		layout.setContentsMargins(0, 0, 0, 5)
 		layout.setAlignment(Qt.AlignTop) ####
 		
@@ -491,11 +478,11 @@ class Right(QVBoxLayout):
 		browse_text_label.setWordWrap(True) ##################
 		browse_text_label.setAlignment(Qt.AlignCenter) #######
 		browse_text_label.setObjectName("cropper_browse_text")
-		browse_text_label.setFixedSize(int(self.w/6), int(self.h/44))###
+		browse_text_label.setFixedSize(int(self.w/6), int(self.h/20))###
 		######################################################
 
 	#Button to browse:
-		self.browse_button = QPushButton("Browse") ###########
+		self.browse_button = QPushButton("Brows") ###########
 		self.browse_button.setObjectName("cropper_browse_btn")
 		self.browse_button.setEnabled(True) ##################
 		self.browse_button.setFixedSize(int(self.w/12), int(self.h/30))#
@@ -510,23 +497,23 @@ class Right(QVBoxLayout):
 		########################################################
 	#   %%%%%%%%%%%%%%   END OF BROWSING   %%%%%%%%%%%%%%%%%%%%%
 
-	#	%%%%%%%%%%%%%	 TABS AREA ()	 %%%%%%%%%%%%%%%%%%%%%%%	
-	#	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	#    %%%%%%%%%%%%%     TABS AREA ()     %%%%%%%%%%%%%%%%%%%%%%%	
+	#    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	#QLabel for Tabs (Data, Peaks and its components):
 		main_tabs_label = QLabel() ################################
 		main_tabs_label.setAlignment(Qt.AlignCenter) ##############
 		main_tabs_label.setWordWrap(True) #########################
 		main_tabs_label.setObjectName("cropper_right_browse_label") 
-		main_tabs_label.setMinimumSize(int(self.w/5), int(self.h/2)) ####
+		main_tabs_label.setMinimumSize(self.w/5.3, self.h/2.2) ####
 		main_tabs_label.setSizePolicy(QSizePolicy.Expanding, 
 								QSizePolicy.Expanding) ############
 		###########################################################
 
 	#Main Big Text of tabs Label
 		tab_text = """
-		<p style="text-align:justify;"><b>FITS Data Points</b></p>
-			"""
+        <p style="text-align:justify;"><b>FITS Data Points</b></p>
+            """
 		##########################################################
 
 	#QLabel to hold Main Big Text:
@@ -534,7 +521,7 @@ class Right(QVBoxLayout):
 		tab_text_label.setWordWrap(True) ##################
 		tab_text_label.setAlignment(Qt.AlignCenter) #######
 		tab_text_label.setObjectName("cropper_browse_text")
-		tab_text_label.setMinimumSize(int(self.w/5.5), int(self.h/44))
+		tab_text_label.setMinimumSize(self.w/6 , self.h/44)
 		tab_text_label.setSizePolicy(QSizePolicy.Expanding, 
 							   QSizePolicy.Fixed) #########
 		###################################################
@@ -542,34 +529,30 @@ class Right(QVBoxLayout):
 	#Layout to hold text and tabs:
 		tab_layout = QVBoxLayout() #################
 		#tab_layout.setSpacing(10) #################
-		tab_layout.setContentsMargins(3, 0, 0, 3) ##
+		tab_layout.setContentsMargins(0, 0, 0, 0) ##
 		tab_layout.setAlignment(Qt.AlignTop) #######
 
 	#Main Tab:
 		tabs = QTabWidget() ######################## 
-		tabs.setMinimumSize(int(self.w/5.2), int(self.h/2.5))
+		tabs.setMinimumSize(self.w/5.3, self.h/2.45)
 		tabs.setSizePolicy(QSizePolicy.Expanding, 
-					 QSizePolicy.Expanding) ############
+					 QSizePolicy.Fixed) ############
 		############################################
 
 	#Number-1 tab page (Data Table):
 		tab_1 = QWidget() ##########################
-		#tab_1.resize(tab_1.sizeHint())
-		tab_1.resize(300,500)
 		tab_layout_data = QVBoxLayout() ############
 		tab_layout_data.setAlignment(Qt.AlignTop)###
 		tab_1.setLayout(tab_layout_data) ###########
-		tab_layout_data.setSpacing(5) #############
-		tab_layout_data.setContentsMargins(0,5,5,0) 
+		tab_layout_data.setSpacing(15) #############
+		tab_layout_data.setContentsMargins(2,5,30,5) 
 		############################################
 
 	#Number-2 tab page (Peak Table):
 		tab_2 = QWidget()  ###############
-		tab_2.resize(tab_2.sizeHint())
 		tab_layout_peaks = QVBoxLayout() #
 		tab_2.setLayout(tab_layout_peaks)#
 		tab_layout_peaks.setSpacing(15)###
-		tab_layout_peaks.setContentsMargins(0,5,5,0) 
 		##################################
 
 	#Set data-tab and peak-tab into main tabs:
@@ -611,21 +594,21 @@ class Right(QVBoxLayout):
 		data_buttons_layout = QHBoxLayout() ##############
 		data_buttons_layout.setContentsMargins(0, 0, 0, 0)  
 		#minimum distance between buttons ################
-		data_buttons_layout.setSpacing(5) ###############
+		data_buttons_layout.setSpacing(15) ###############
 		##################################################
 
 	#Plot data button in horizontal buttons Layout: 
 		self.data_plot_button = QPushButton("") ##########################
 		self.data_plot_button.setObjectName("transround") ################
 		self.data_plot_button.setEnabled(True) ###########################
-		self.data_plot_button.setFixedSize(int(self.w/50), int(self.w/50)) 
+		self.data_plot_button.setFixedSize(int(self.w/60), int(self.h/40)) 
 		##################################################################
 		
 	#Set icon for the data plot button:
 		script_dir = os.path.dirname(os.path.abspath(__file__))
 		icon_path = os.path.join(script_dir, "plot_data.png") #
 		self.data_plot_button.setIcon(QIcon(icon_path)) #######
-		self.data_plot_button.setIconSize(QSize(int(self.w/50), int(self.w/50))) #####
+		self.data_plot_button.setIconSize(QSize(300, 65)) #####
 		data_buttons_layout.addWidget(self.data_plot_button) ##
 		#######################################################
 		
@@ -633,24 +616,22 @@ class Right(QVBoxLayout):
 		self.cancel_plot_button = QPushButton("") ##########################
 		self.cancel_plot_button.setObjectName("transround") ################
 		self.cancel_plot_button.setEnabled(True) ###########################
-		self.cancel_plot_button.setFixedSize(int(self.w/50),int(self.w/50))#  
+		self.cancel_plot_button.setFixedSize(int(self.w/60),int(self.h/40))#  
 		
 	#Set icon for the cancel data plot button:
 		icon_path = os.path.join(script_dir, "cancel_plot.png")
 		self.cancel_plot_button.setIcon(QIcon(icon_path)) #####
-		self.cancel_plot_button.setIconSize(QSize(int(self.w/50), int(self.w/50)))
-						  ###
+		self.cancel_plot_button.setIconSize(QSize(300, 65)) ###
 		data_buttons_layout.addWidget(self.cancel_plot_button)#
 		#######################################################
-
+		
 	#Widget to hold data plot&cancel buttons and add it into tab data layout:
 		container_widget = QWidget() #######################################
-		container_widget.setContentsMargins(0,0,0,0) 
 		container_widget.setLayout(data_buttons_layout)#####################
 		tab_layout_data.addWidget(container_widget, alignment=Qt.AlignLeft)#
 		####################################################################
 
-		#######################	PEAK BLOCK	###########################
+		#######################    PEAK BLOCK    ###########################
 
 	#Peaks Table:
 		self.peakTable = QTableWidget() ########################################
@@ -664,7 +645,7 @@ class Right(QVBoxLayout):
 		self.peakTable.horizontalHeaderItem(1).setTextAlignment(Qt.AlignHCenter)
 		self.peakTable.verticalHeader().setDefaultAlignment(Qt.AlignCenter) ####
 		########################################################################
-
+		
 	#Clear Peak Table:
 		self.setEmptyData(self.peakTable)
 	#Set Peak Table into Tabs:
@@ -673,23 +654,23 @@ class Right(QVBoxLayout):
 	#Horizontal Layout of Peak tab widgets:
 		peak_widgets_layout = QHBoxLayout()############
 		peak_widgets_layout.setContentsMargins(0,0,0,0) 
-		peak_widgets_layout.setSpacing(5)#############
+		peak_widgets_layout.setSpacing(15)#############
 		###############################################
 
 	#Label for ward "Order":
 		peak_undertext_label = QLabel("Order:") #########################
 		peak_undertext_label.setAlignment(Qt.AlignLeft) #################
 		peak_undertext_label.setWordWrap(True) ##########################
-		peak_undertext_label.setObjectName("cropper_right_browse_label_2")# 
+		peak_undertext_label.setObjectName("cropper_right_browse_label")# 
 		peak_undertext_label.setFixedSize(int(self.w/30), int(self.h/30))
 		peak_widgets_layout.addWidget(peak_undertext_label)##############
 		#################################################################
 
 	#Order spin box:
 		self.peak_order_spinbox = QSpinBox()##################
-		self.peak_order_spinbox.setMinimum(1)#################	   
-		self.peak_order_spinbox.setMaximum(21)################	 
-		self.peak_order_spinbox.setValue(2)###################		
+		self.peak_order_spinbox.setMinimum(1)#################       
+		self.peak_order_spinbox.setMaximum(21)################     
+		self.peak_order_spinbox.setValue(2)###################        
 		self.peak_order_spinbox.setSingleStep(1)##############  
 		peak_widgets_layout.addWidget(self.peak_order_spinbox)
 		######################################################
@@ -698,7 +679,7 @@ class Right(QVBoxLayout):
 		order_undertext_label = QLabel("  Auto:") #######################
 		order_undertext_label.setAlignment(Qt.AlignLeft) ################
 		order_undertext_label.setWordWrap(True) #########################
-		order_undertext_label.setObjectName("cropper_right_browse_label_2") 
+		order_undertext_label.setObjectName("cropper_right_browse_label") 
 		order_undertext_label.setFixedSize(int(self.w/30),int(self.h/30)) 
 		peak_widgets_layout.addWidget(order_undertext_label)#############
 		#################################################################
@@ -712,14 +693,14 @@ class Right(QVBoxLayout):
 		self.peak_plot_button = QPushButton("") ##########################
 		self.peak_plot_button.setObjectName("transround") ################
 		self.peak_plot_button.setEnabled(True) ###########################
-		self.peak_plot_button.setFixedSize(int(self.w/50), int(self.w/50)) 
+		self.peak_plot_button.setFixedSize(int(self.w/60), int(self.h/40)) 
 		##################################################################
 		
 	#Icons for Button (plot peaks):
 		script_dir = os.path.dirname(os.path.abspath(__file__))
 		icon_path = os.path.join(script_dir, "plot_data.png") #
 		self.peak_plot_button.setIcon(QIcon(icon_path)) #######
-		self.peak_plot_button.setIconSize(QSize(int(self.w/50), int(self.w/50))) #####
+		self.peak_plot_button.setIconSize(QSize(300, 65)) #####
 	#Set button into layout: ##################################
 		peak_widgets_layout.addWidget(self.peak_plot_button) ##
 		#######################################################
@@ -728,13 +709,13 @@ class Right(QVBoxLayout):
 		self.peak_tolist_button = QPushButton("") #########################
 		self.peak_tolist_button.setObjectName("transround")################
 		self.peak_tolist_button.setEnabled(True)###########################
-		self.peak_tolist_button.setFixedSize(int(self.w/50),int(self.w/50))  
+		self.peak_tolist_button.setFixedSize(int(self.w/60),int(self.h/40))  
 		###################################################################
 		
 	#Set icon for Button (Peaks into list)
 		icon_path = os.path.join(script_dir, "peak_tolist.png")#
 		self.peak_tolist_button.setIcon(QIcon(icon_path)) ######
-		self.peak_tolist_button.setIconSize(QSize(int(self.w/50),int(self.w/50)))#####
+		self.peak_tolist_button.setIconSize(QSize(300, 65))#####
 		peak_widgets_layout.addWidget(self.peak_tolist_button)##
 		
 	#Set horizontal layout into container:
@@ -755,19 +736,19 @@ class Right(QVBoxLayout):
 		#перенос текста ############################################
 		Character_label.setWordWrap(True) ##########################
 		Character_label.setObjectName("cropper_right_browse_label")# 
-		Character_label.setFixedSize(int(self.w/5),int(self.h/9)) 
+		Character_label.setFixedSize(int(self.w/5.3),int(self.h/10)) 
 		############################################################
 
 	#Text for Characteristic Label:
 		Character_text = """
-			<p style="text-align: justify;"><b>List Of Peaks</b></p>
-			"""
+            <p style="text-align: justify;"><b>List Of Peaks</b></p>
+            """
 		##############################################################
 
 	#Verticale Layout to hold text list of peaks and 2 buttons:
 		layout = QVBoxLayout() ############
-		layout.setSpacing(7) #############
-		layout.setContentsMargins(5,0,5,5)#
+		layout.setSpacing(15) #############
+		layout.setContentsMargins(0,0,0,0)#
 		layout.setAlignment(Qt.AlignTop)###
 
 	#QLabel for the text of Characteristic Label:
@@ -791,17 +772,17 @@ class Right(QVBoxLayout):
 		self.Character_Delete_button = QPushButton("Delete Peaks") #############
 		self.Character_Delete_button.setObjectName("cropper_browse_btn") #######
 		self.Character_Delete_button.setEnabled(True) ##########################
-		self.Character_Delete_button.setFixedSize(int(self.w/12),int(self.h/30)) 
+		self.Character_Delete_button.setFixedSize(int(self.w/14),int(self.h/38)) 
 		########################################################################
 
 	#Button to Create Polynom:
 		self.Character_Create_button = QPushButton("Create Polynom") ###########
 		self.Character_Create_button.setObjectName("cropper_browse_btn") #######
 		self.Character_Create_button.setEnabled(True) ##########################
-		self.Character_Create_button.setFixedSize(int(self.w/12),int(self.h/30)) 
+		self.Character_Create_button.setFixedSize(int(self.w/14),int(self.h/38)) 
 		########################################################################
 
-	#Set Buttons into Horizontal layout:
+    #Set Buttons into Horizontal layout:
 		char_buttons_layout.addWidget(self.Character_Delete_button,10,Qt.AlignHCenter)
 		char_buttons_layout.addWidget(self.Character_Create_button,10,Qt.AlignHCenter)
 		##############################################################################
@@ -826,19 +807,19 @@ class Right(QVBoxLayout):
 		watch_label.setAlignment(Qt.AlignCenter) ###############
 		watch_label.setWordWrap(True) ##########################
 		watch_label.setObjectName("cropper_right_browse_label")# 
-		watch_label.setFixedSize(int(self.w/5),int(self.h/14))
+		watch_label.setFixedSize(int(self.w/5.3),int(self.h/16))
 		########################################################
 
 	#Text of Big label for Watch layer:
 		watch_text = """
-			<p style="text-align: justify;"><b>Watch Obtained Polynom</b></p>
-			"""
+            <p style="text-align: justify;"><b>Watch Obtained Polynom</b></p>
+            """
 		#####################################################################
 
 	#Vertical Layout to hold text and watch button:
 		layout = QVBoxLayout() ####################
 		layout.setSpacing(7) ######################
-		layout.setContentsMargins(0,0,0,5) ########
+		layout.setContentsMargins(0,0,0,0) ########
 		layout.setAlignment(Qt.AlignTop) ##########
 		
 	#Label for the watch text:
@@ -853,7 +834,7 @@ class Right(QVBoxLayout):
 		self.watch_button = QPushButton("Watch") ####################
 		self.watch_button.setObjectName("right_btn_accept")########
 		self.watch_button.setEnabled(False) ##########################
-		self.watch_button.setFixedSize(int(self.w/12),int(self.h/30)) 
+		self.watch_button.setFixedSize(int(self.w/12),int(self.h/38)) 
 		#############################################################
 
 	#Set widgets into layout then set layout into Watch label:
@@ -875,20 +856,20 @@ class Right(QVBoxLayout):
 		save_label.setAlignment(Qt.AlignCenter) ################
 		save_label.setWordWrap(True) ###########################
 		save_label.setObjectName("cropper_right_browse_label")##  
-		save_label.setFixedSize(int(self.w/5),int(self.h/14))#
+		save_label.setFixedSize(int(self.w/5.3),int(self.h/16))#
 		########################################################
 
 	#text above the button:
 		save_text = """
-			<p style="text-align: justify;"><b>Save Obtained Polynom</b></p>
-			"""
+            <p style="text-align: justify;"><b>Save Obtained Polynom</b></p>
+            """
 		
 		#######################################################
 
 	#Ver Layout to hold text and button:
 		layout = QVBoxLayout() #################
 		layout.setSpacing(7) ###################
-		layout.setContentsMargins(0, 0, 0, 5)###
+		layout.setContentsMargins(0, 0, 0, 0)###
 		layout.setAlignment(Qt.AlignTop) #######
 		
 	#label to hold save_text:
@@ -903,7 +884,7 @@ class Right(QVBoxLayout):
 		self.save_button = QPushButton("Save") #####################
 		self.save_button.setObjectName("right_btn_accept")########
 		self.save_button.setEnabled(False) ##########################
-		self.save_button.setFixedSize(int(self.w/12),int(self.h/30)) 
+		self.save_button.setFixedSize(int(self.w/12),int(self.h/38)) 
 		############################################################
 
 	#Set text label & button into layout then set layout into save label:
@@ -923,7 +904,7 @@ class Right(QVBoxLayout):
 		#======================================================
 
 		#CONNECTION OF - Data plot button:========================
-		self.data_plot_button.clicked.connect(lambda: self.model.plotData())
+		self.data_plot_button.clicked.connect(self.model.plotData)
 		#=========================================================
 
 		#CONNECTION OF - Cancel plot button:=============================
@@ -955,38 +936,9 @@ class Right(QVBoxLayout):
 		#==================================================================
 
 		#CONNECTION OF - Button (save polynom) with model:=================
-		#self.save_button.clicked.connect(self.model.savePolynomAsCsv)
-		self.save_button.clicked.connect(self.on_save_csv_clicked)
+		self.save_button.clicked.connect(self.model.savePolynomAsCsv)
+
 #......................................................................................
-	def on_save_csv_clicked(self):
-		# стартовая папка
-		default_dir = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
-
-		# создаём экземпляр QFileDialog (не нативный!), настраиваем его
-		dialog = QFileDialog(self.model.getMainParent(), "Save polynomial csv as…", default_dir)
-		dialog.setAcceptMode(QFileDialog.AcceptSave)
-		dialog.setNameFilter("CSV-files (*.csv)")
-		dialog.setOption(QFileDialog.DontUseNativeDialog, True)	   # отключить нативный
-		dialog.setOption(QFileDialog.DontConfirmOverwrite, True)	  # не спрашивать про перезапись
-
-		if dialog.exec_() != QDialog.Accepted:
-			return  # пользователь отменил
-
-		path = dialog.selectedFiles()[0]
-		try:
-			# CsvPolynom.save открывает файл в 'a' (append) и добавит новую строку
-			self.model.polynom.savePoly(path)
-			QMessageBox.information(
-				self.model.getMainParent(),
-				"Done",
-				f"Polynomial appended to:\n{path}"
-			)
-		except Exception as e:
-			QMessageBox.critical(
-				self.model.getMainParent(),
-				"Error of saving",
-				str(e)
-			)
 
 	def setEmptyData(self, datatable):
 		for _ in range(10):
@@ -1057,7 +1009,7 @@ class Right(QVBoxLayout):
 
 		# Проверка на None и пустоту
 		if listOfPeaks is not None and len(listOfPeaks) > 0:
-			# Добавляем имена в ComboBox
+		    # Добавляем имена в ComboBox
 			for name in listOfPeaks.keys():
 				self.combolistOfPeaks.addItem(name)
 		else:
@@ -1073,8 +1025,8 @@ class Right(QVBoxLayout):
 #+++++++++++++++++++++++++++++ADDITIONA MAIN PACKEDGE++++++++++++++++++++++++++++++++++++
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 from PyQt5.QtWidgets import (
-	QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox,
-	QSlider, QPushButton, QInputDialog, QMessageBox
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSpinBox,
+    QSlider, QPushButton, QInputDialog, QMessageBox
 )
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -1214,9 +1166,9 @@ class CalibPolyDlg(QDialog): #QWidget):
 
 	#Label and spinBox:
 		lbl = QLabel("""
-			<p style="text-align: justify;"><b>
+            <p style="text-align: justify;"><b>
 			Poly-Expert:</b></p>
-			""")
+            """)
 		lbl.setObjectName("cropper_right_browse_label")
 		#self.expositionBox = QSpinBox()################
 		#self.expositionBox.setValue(1)#################
@@ -1238,11 +1190,11 @@ class CalibPolyDlg(QDialog): #QWidget):
 		for idx, fname in enumerate(self.allPeaks.keys()):
 			color = colors[idx % len(colors)]  # colors of "---"
 		
-			# HTML format with appropriate colors:
+		    # HTML format with appropriate colors:
 			html_text = (
 				f'<span style="color: {color};">--- </span>'
-				f'<span style="color: black;">file name: {fname} </span>'
-			)
+		        f'<span style="color: black;">file name: {fname} </span>'
+		    )
 		
 			label = QLabel(html_text, self.controlWidget)######
 			self.rightLayout.addWidget(label) #################
@@ -1404,7 +1356,7 @@ class CalibPolyDlg(QDialog): #QWidget):
 		
 			# из логики интерфейса в ArxSR.py........................................
 
-			# Отрисовка
+		    # Отрисовка
 			self.figure.clf()
 			ax = self.figure.add_subplot(111)
 			self.plt_check = ax
@@ -1415,7 +1367,7 @@ class CalibPolyDlg(QDialog): #QWidget):
 			self.canvas.draw()
 		
 		except Exception as e:
-			print(f" Ошибка при построении графика: {e}")
+		    print(f" Ошибка при построении графика: {e}")
 
 
 
