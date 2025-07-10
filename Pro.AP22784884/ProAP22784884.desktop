@@ -1,21 +1,27 @@
 [Desktop Entry]
 
-# The type of the thing this desktop file refers to (e.g. can be Link)
 Type=Application
 
-# The application name.
-Name=ArXSP 
+Version=0.1.0
 
-# Tooltip comment to show in menus.
-Comment=A program for archival spectra reduction.
+Name=ArXSP
 
-Terminal=True
+GenericName=Archival Spectra Processing Tool
 
-# The path (folder) in which the executable is run
-Path=/opt/ProAP22784884
+Comment=Archival reduction of FITS spectra. Source code: https://github.com/ill-i/ArXSP
 
-# The executable (can include arguments)
 Exec=/opt/ProAP22784884/ProAP22784884
 
-# The icon for the entry, use the target filesystem path.
 Icon=arxsp_logo_full
+
+Path=/opt/ProAP22784884
+
+Terminal=true
+
+StartupNotify=true
+
+URL=https://github.com/ill-i/ArXSP
+
+Categories=Science;Astronomy;Spectroscopy;
+
+Keywords=spectra;archive;reduction;analysis;astronomy;
