@@ -50,7 +50,7 @@ from GUIcomp import*
 ###############################################################################
 
 
-class model_align(object):
+class model_intensity(object):
     """
     Encapsulates loading, displaying, and aligning a FITS spectrum.
     Holds references to the main window, data, display settings, and UI components.

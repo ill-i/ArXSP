@@ -430,7 +430,7 @@ class MainWindow(QMainWindow):
             if not os.path.isdir(folder_path):
                 continue
 
-            model_name = entry[5:]  # убираем "model."
+            model_name = entry[6:]  # убираем "model."
             py_path = os.path.join(folder_path, f"model_{model_name}.py")
             icon_gr_path = os.path.join(folder_path, f"FIATb-GR-{model_name}.png")
             icon_or_path = os.path.join(folder_path, f"FIATb-OR-{model_name}.png")

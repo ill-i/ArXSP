@@ -51,7 +51,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from ArxSR import* 
 from HeaderEditWindow import FileHeaderEditor
 
-class model_cropper(object):
+class model_crop_rotate(object):
 
 #Initializer:
 	def __init__(self,parent=None):
