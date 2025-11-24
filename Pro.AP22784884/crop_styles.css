@@ -1,7 +1,7 @@
 QSlider#slider {
-	background: transparent; /* Делаем фон прозрачным */
+	background: transparent; 
 	border: none;
-	height: 50px; /* Высота всей области слайдера (не трека!) */
+	height: 50px; 
 }
 
 

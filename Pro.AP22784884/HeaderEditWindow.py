@@ -63,18 +63,16 @@ class FileHeaderEditor(QMainWindow):
         self.window_height = int((screen_height) * 0.9)### 
         self.resize(self.window_width,self.window_height)#
 
-# Создаём центральный виджет и layout для него
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # 2) Текстовый редактор
+
         self.text_edit = CustomPlainTextEdit([1,2])
-        self.text_edit.setPlaceholderText("Введите текст...")
+        self.text_edit.setPlaceholderText("Enter text...")
         main_layout.addWidget(self.text_edit)
 
-        # 3) Нижняя панель с кнопкой «Сохранить» (справа)
         bottom_buttons_layout = QHBoxLayout()
         main_layout.addLayout(bottom_buttons_layout)
 
@@ -121,7 +119,6 @@ class FileHeaderEditor(QMainWindow):
 
         except Exception as e:
             pass
-            #print(f"Ошибка при чтении файла: {e}")
 
 
 
@@ -246,15 +243,14 @@ class FileHeaderEditor(QMainWindow):
         options = QFileDialog.Options()
         filepath, _ = QFileDialog.getSaveFileName(
             self,
-            "Сохранить файл",
+            "Save file",
             "",
-            "Текстовые файлы (*.txt);;Все файлы (*)",
+            "text file (*.txt);;All files (*)",
             options=options
         )
 
         self.lines.append('END')
 
-        # Соберём обратно
         safe_header_text = '\n'.join(lines)
         new_header_txt = Header.fromstring(safe_header_text, sep='\n')
         if filepath:
@@ -262,20 +258,18 @@ class FileHeaderEditor(QMainWindow):
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(self.text_edit.toPlainText())
             except Exception as e:
-                print(f"Ошибка при сохранении файла: {e}")
+                print(f"save error: {e}")
 
 
 
 
     def on_ok_clicked(self):
-        # Сохраняем данные
+
         self._result_data = self.line_edit.text()
-        # Завершаем диалог со статусом "принято"
         self.accept()
 
 
     def get_result(self):
-        #"""Вернёт сохранённое значение, введённое в поле."""
         return self._result_data
 
 
@@ -287,14 +281,13 @@ class FileHeaderEditor(QMainWindow):
 class CustomPlainTextEdit(QPlainTextEdit):
     def __init__(self, locked_lines=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Набор или список заблокированных номеров строк
         self.locked_lines = set(locked_lines) if locked_lines else set()
 
 
     def setLockedLines(self, lines_to_lock):
 
         self.locked_lines = set(lines_to_lock)
-        self._highlight_locked_lines()  # Обновляем подсветку
+        self._highlight_locked_lines()  
 
     def keyPressEvent(self, event):
         cursor = self.textCursor()
@@ -302,37 +295,28 @@ class CustomPlainTextEdit(QPlainTextEdit):
         current_line_number = current_block.firstLineNumber()
         
         if current_line_number in self.locked_lines:
-            # Игнорируем ввод/редактирование
-            return  # или event.ignore()
+            return  #event.ignore()
         else:
-            # Разрешаем редактирование
             super().keyPressEvent(event)
 
     def _highlight_locked_lines(self):
-        # Список подсветок
         extra_selections = []
         
-        # Настраиваем цвет для заблокированных строк
-        # (например, светло-серый цвет шрифта)
+
         locked_format_color = QColor(Qt.lightGray)
         
         for line_number in self.locked_lines:
             block = self.document().findBlockByLineNumber(line_number)
             if block.isValid():
-                # Создаем выделение
                 selection = QTextCursor(block)
-                # Выделяем всю строку
                 selection.select(QTextCursor.LineUnderCursor)
                 
-                # Оформление для заблокированной строки
                 extra_sel = QTextEdit.ExtraSelection()
                 extra_sel.cursor = selection
-                # Меняем цвет текста (foreground)
                 extra_sel.format.setForeground(locked_format_color)
                 
                 extra_selections.append(extra_sel)
         
-        # Устанавливаем все выделения разом
         self.setExtraSelections(extra_selections)
 
 

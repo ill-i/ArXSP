@@ -58,15 +58,11 @@ class AnimatedToolButton(QToolButton):
     def enterEvent(self, event):
 
         if not self.original_geometry:
-            #Сохраняем изначальную геометрию кнопки:
             self.original_geometry = self.geometry()  
         
-        #Увеличить кнопку:
         new_geometry = self.original_geometry.adjusted(-10, -10, 10, 10) ##
         self.animation.setDuration(200) ###################################
-        # Текущая геометрия
         self.animation.setStartValue(self.geometry()) ##################### 
-        # Увеличенная геометрия
         self.animation.setEndValue(new_geometry) ########################## 
         self.animation.start() ############################################
         super().enterEvent(event) #########################################
@@ -75,12 +71,9 @@ class AnimatedToolButton(QToolButton):
 
 #Leave animation:
     def leaveEvent(self, event):
-        # Анимация уменьшения при покидании мыши
         if self.original_geometry: #############
             self.animation.setDuration(200)
-            # Текущая геометрия ###############################
             self.animation.setStartValue(self.geometry()) ##### 
-            # Возвращаем к изначальной геометрии ##############
             self.animation.setEndValue(self.original_geometry)# 
             self.animation.start() ############################
         super().leaveEvent(event) #############################
@@ -151,7 +144,6 @@ class QDashboard(QDockWidget):
     
 #Register Layout:
     def AddLayout(self, num, layout):
-        #Проверить layout на сущ в карте! 
         if not num in self.NumWidgetMap:
             self.w = QWidget() #QGroupBox()
             self.w.setLayout(layout)
@@ -320,7 +312,7 @@ class ColorChangingSlider(QWidget):
 		self.slider.setValue(0)
 		self.slider.setTickInterval(1)
 		self.slider.setTickPosition(QSlider.TicksBelow)
-		self.slider.setObjectName("slider")  # Фиксированное имя
+		self.slider.setObjectName("slider") 
 
 		self.slider.valueChanged.connect(self.update_slider_class)
 
@@ -346,16 +338,14 @@ class ColorChangingSlider(QWidget):
 		current_value = self.slider.value()
 		max_value = self.slider.maximum()
 
-		# Защищаемся от деления на ноль.
-		# Если max_value == 0, сделаем ratio = 0.
+
 		ratio = current_value / max_value if max_value != 0 else 0
 
-		# Меняем "пороги" на основе ratio, а не фиксированных значений.
-		if ratio < 0.3:      # соответствует < 30% от максимума    
+		if ratio < 0.3:      
 			color_class = "green"
-		elif ratio < 0.6:    # 30%..60%
+		elif ratio < 0.6:  
 			color_class = "yellow"
-		elif ratio < 0.8:    # 60%..80%
+		elif ratio < 0.8:  
 			color_class = "orange"
 		else: 
 			color_class = "red"
@@ -377,56 +367,48 @@ class QLabeledSlider(QWidget):
 	def __init__(self, label_text, parent=None):
 		super().__init__(parent)
 
-		# Главный вертикальный layout для (строка с меткой+LCD) + слайдер
 		main_layout = QVBoxLayout()
 		main_layout.setContentsMargins(0, 0, 0, 0)
-		main_layout.setSpacing(1)              # 1 px между "верхним блоком" и слайдером
-		main_layout.setAlignment(Qt.AlignTop)  # Прижимаем все виджеты к верхней границе
+		main_layout.setSpacing(1)            
+		main_layout.setAlignment(Qt.AlignTop)  
 
-		# --- Горизонтальный layout: Label (слева) и LCD (справа)
 		top_layout = QHBoxLayout()
 		top_layout.setContentsMargins(0, 0, 30, 0)
-		top_layout.setSpacing(1)              # 1 px между Label и LCD
+		top_layout.setSpacing(1)             
 
 		# --- Метка
 		self.my_label = QLabel(label_text)
 		self.my_label.setObjectName("cropper_browse_text") 
 		self.my_label.setAlignment(Qt.AlignCenter)  
-		# Расширяется по горизонтали, не растягивается излишне по вертикали
 		self.my_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
 		# --- LCD
 		self.my_lcd = QLCDNumber()
-		# Установим кол-во разрядов, если нужно (напр. до 3, если макс. значение слайдера 100)
 		self.my_lcd.setDigitCount(3)
 		#self.my_lcd.setSegmentStyle(QLCDNumber.Filled)
 
 		base_height = self.my_label.sizeHint().height()
 		new_height = base_height * 2
-		# Применяем:
 		self.my_label.setFixedHeight(new_height)
 		self.my_lcd.setFixedHeight(new_height)
 		self.my_lcd.setMinimumWidth(100)
 
-		# Добавляем Label, «пружинку» для сдвига, и LCD
+		#LCD
 		top_layout.addWidget(self.my_label)
-		top_layout.addStretch(1)  # растяжение, чтобы LCD прилипал к правому краю
+		top_layout.addStretch(1)  
 		top_layout.addWidget(self.my_lcd)
 
-		# --- Слайдер (ColorChangingSlider)
+		#(ColorChangingSlider)
 		self.my_slider = ColorChangingSlider()
 		self.my_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-		# Подключаем отображение значения слайдера в LCD
+
 		#self.my_slider.slider.valueChanged.connect(self.my_lcd.display)
 		self.my_slider.slider.valueChanged.connect(self.handleValueChange)
-		# --- Собираем всё в главный layout
-		main_layout.addLayout(top_layout)     # строка (метка + LCD)
-		main_layout.addWidget(self.my_slider) # сам слайдер
+		main_layout.addLayout(top_layout)     
+		main_layout.addWidget(self.my_slider) 
 		self.setLayout(main_layout)
 
-		# Размерная политика самого QLabeledSlider:
-		# По горизонтали можем растягиваться, а по вертикали — «фиксирована» или "Preferred"
 		self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 	#_______________________________________________________________________________________
 

@@ -105,7 +105,6 @@ class ArxData(object):
 		else:
 			buff = io.BytesIO() 
 			plt.imsave(buff, self.__data[::-1], format='png') 
-			# Перемещаем курсор в начало
 			buff.seek(0)  
 			return buff 
 #End of Save as png in buffer________________________________
@@ -177,15 +176,15 @@ class ArxDataEditor(object):
 #Rotation by angle:
 	def rotate(self, angle=0):
 		try:
-			# достаём данные и заголовок
+			#corrected: get the data and the header
 			temp_data   = self._arxData.get_data()
 			temp_header = self._arxData.get_header()
 	
-			# безопасно читаем BITPIX (0, если ключа нет)
+			#read BITPIX (0, if not keys)
 			bitpix = temp_header.get("BITPIX", 0)
 	
 			if bitpix > 0:
-				# для целочисленных картинок используем OpenCV (warpAffine)
+				#OpenCV (warpAffine)
 				# dsize = (width, height)
 				height, width = temp_data.shape
 				shape = (width, height)
@@ -199,21 +198,20 @@ class ArxDataEditor(object):
 				)
 				history_msg = f"Image was rotated on {angle:.3f} deg (OpenCV)"
 			else:
-				# для float-картинок — scipy.ndimage.rotate без интерполяции
+				#for float— scipy.ndimage.rotate
 				data_rotated = nd_rotate(
 					temp_data,
 					angle=angle,
-					reshape=False,	# сохраняем исходную форму
+					reshape=False,	
 					order=0,		  # nearest-neighbor
-					mode='nearest'	# граничные пиксели повторяются
+					mode='nearest'	
 				)
 				history_msg = f"Image was rotated on {angle:.3f} deg (scipy, order=0)"
 	
-			# обновляем историю и дату в заголовке
+
 			temp_header.add_history(history_msg)
 			temp_header["DATE"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
 	
-			# возвращаем новый объект ArxData
 			return ArxData(None, None, data_rotated, temp_header)
 	
 		except Exception as e:
@@ -243,7 +241,7 @@ class ArxDataEditor(object):
 			Top = int(top * h / 100)
 			Down = int(down * h / 100)
 
-			# Проверка на допустимость обрезки
+
 			if Left + Right >= w:
 				raise ValueError(f"Invalid crop: left + right ({Left + Right}px) >= image width ({w}px).")
 			if Top + Down >= h:
@@ -289,12 +287,11 @@ class ArxSpectEditor(ArxDataEditor):
 ## add other func
 	def SDistorsionCorr(self, top=None, down=None, order_mse=None):
 		try:
-			# Получение данных
 			data = self._arxData.get_data()
 			temp_header = self._arxData.get_header()
 			print("data", data)
 			if data is None:
-				print("[SDistorsionCorr] Error: нет данных.")
+				print("[SDistorsionCorr] Error:No data.")
 				return None
 			
 			###====
@@ -606,7 +603,7 @@ class ArxCollibEditor(ArxDataEditor):
 			internal_peaks = internal_peaks[np.argsort(data_smoothed[internal_peaks])[-7:]]  # Focus on significant features
 		elif len(internal_peaks) < 7:
 			data_smoothed = data
-			add_shift = 20 #чтобы не захватывал крайние пики, которые итак учтены
+			add_shift = 20 
 			internal_peaks, _ = find_peaks(data_smoothed[first_peak+add_shift:last_peak-add_shift], distance=len(data_smoothed[first_peak:last_peak])/100)
 			internal_peaks = internal_peaks + first_peak+add_shift
 			if len(internal_peaks) > 7:
@@ -650,7 +647,7 @@ class ArxCollibEditor(ArxDataEditor):
 
 	@staticmethod
 	def is_smooth(poly, x):
-		derivative_coeffs = np.polyder(poly)   # вернет np.poly1d
+		derivative_coeffs = np.polyder(poly)   #returns np.poly1d
 		derivative_values = derivative_coeffs(x)
 		smoothness = np.std(derivative_values)
 		return smoothness
@@ -675,14 +672,12 @@ class ArxCollibEditor(ArxDataEditor):
 
 	@staticmethod
 	def poly_eval(poly, x):
-		"""Безопасная функция для вычисления значений полинома."""
 		if poly is None:
 			raise ValueError("poly is None")
 		return sum(c * x**i for i, c in enumerate(poly.coef[::-1]))
 	
 	@staticmethod
 	def polynomial_extrapolate(coeffs, x):
-		"""Экстраполяция по коэффициентам"""
 		return sum(c * x**i for i, c in enumerate(coeffs))
 
 
@@ -699,7 +694,6 @@ class ArxCollibEditor(ArxDataEditor):
 
 		print("check poly_mse_new")
 
-		# Вспомогательные данные
 		x_test = np.linspace(min(x_sorted), max(x_sorted), 500)
 
 		for order_mse in range(1, MAX_DEGREE + 1):
@@ -712,7 +706,7 @@ class ArxCollibEditor(ArxDataEditor):
 					candidates.append((order_mse, poly, smoothness))
 	
 			except Exception as e:
-				print(f"Ошибка на степени {order_mse}: {e}")
+				print(f"order error {order_mse}: {e}")
 			
 		x_test = np.linspace(min(x_sorted), max(x_sorted), 500)
 
@@ -726,16 +720,13 @@ class ArxCollibEditor(ArxDataEditor):
 			best_poly = None
 			print("best_poly = None.")
 
-		# Вычисление корня
 		root = fsolve(lambda x: ArxCollibEditor.poly_eval(best_poly, x), 1)[0]
 
-		# Построение полинома экстраполяции
 		x_points = [0, x_test[0]]
 		y_points = [0, best_poly(x_test)[0]]
 		extrapolation_poly = Polynomial.fit(x_points, y_points, 20).convert()
 		extrapolation_coefficients = extrapolation_poly.coef
 
-		# Возвращаем всё нужное
 		return best_poly, extrapolation_coefficients, root
 
 
@@ -811,14 +802,14 @@ class CsvPolynom(object):
 	def isValidDate(date_str):
 		try:
 			dt = datetime.strptime(date_str, "%d.%m.%Y")
-			return date_str  # Уже в нужном формате — возвращаем как есть
+			return date_str  
 		except ValueError:
 			pass
 
 		try:
 			t = Time(date_str, format='fits')
 			dt = t.to_datetime()
-			return dt.strftime("%d.%m.%Y")  # Преобразуем в нужный формат
+			return dt.strftime("%d.%m.%Y") 
 		except Exception:
 			return False
 #..................................................
@@ -901,7 +892,7 @@ class CsvPolynom(object):
 		def parse_date(s):
 			s = s.strip()
 			if 'T' in s:
-				s = s.split('T')[0]  # отбрасываем время, оставляем только дату
+				s = s.split('T')[0]  
 			for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d-%m-%Y"):
 				try:
 					return datetime.strptime(s, fmt)
